@@ -1,0 +1,481 @@
+<!DOCTYPE HTML>
+<!--
+	Massively by HTML5 UP
+	html5up.net | @ajlkn
+	Free for personal and commercial use under the CCA 3.0 license (html5up.net/license)
+-->
+<html>
+	<head>
+		<title>Images of the Russian Empire</title>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+		<link rel="stylesheet" href="assets/css/main.css" />
+		<noscript><link rel="stylesheet" href="assets/css/noscript.css" /></noscript>
+	</head>
+	<body class="is-preload">
+
+		<!-- Wrapper -->
+			<div id="wrapper">
+
+				<!-- Intro -->
+					<div id="intro">
+						<h1>COMPSCI 194-26: Project 1<br> <br> Images of the Russian Empire <br></h1>
+						<p style="background-color: rgba(256, 32, 16, 0.35);
+										  padding: 0.25rem 1rem;
+										  border-color: rgba(256, 32, 16, 0.5);">
+							<b>Saurav Mittal</b> | saurav@berkeley.edu 
+						</p> <br><br>
+					</div>
+				
+ 					<!-- Main -->
+					<div id="main">
+
+						<!-- Featured Post -->
+							<article class="post featured">
+								<header class="major">
+									<h2>Introduction</h2>
+									<p>Back in early 20<sup>th</sup> century there was this Russian dude who dreamed of colored photography in a world of dull B&W pictures. He travelled across the Russian empire & photographed everything he saw through three different colored filters (red, green, and blue). Now we're going use his 100 year old digitized glass plate negatives to produce colored pictures of Russia.</p> 
+									<p> More information and background about this <a href='https://inst.eecs.berkeley.edu/~cs194-26/fa20/hw/proj1/'>here </a> </p>
+								</header>
+								
+							</article>
+
+						<!-- Featured Post -->
+							<article class="post">
+								<header class="major">
+									<h2>Project Report</h2>
+									<p>Most of the work done & listed is just <strike>additional exploration</strike> <i>Bells & Whistles</i> to improve the overall perceived quality of the final image. This was done by improving channel alignment through neat tricks and post-processing the image to enhance aesthetics. </p>
+								</header>
+
+
+								<h2>Results Sneak Peak</h2>
+									<a class="image main"><img src="images/compare/workshop.jpg" alt="" /></a>
+								<hr>
+
+								<h2>Table of Contents</h2>
+								<div class='row'>
+										<div class="col-4 col-12-small">
+
+											<b>Color Channel Alignment</b>
+											<ol>
+												<li> Dissimilarity Metric </li>
+												<li> Image Pyramid Alignment & Parameters </li>
+												<li> Alignment Region<sup>*</sup> </li>
+												<li> Padded Rolling<sup>*</sup> </li>
+												<li> Edge/Gradient Alignment<sup>*</sup> </li>
+												<li> Base Channel Selection<sup>*</sup> </li>
+											</ol>
+										</div>
+										<div class="col-4 col-12-small">
+
+											<b>Image Processing</b>
+											<ol>
+												<li> Border Cropping<sup>*</sup> </li>
+												<li> Auto White Balancing<sup>*</sup> </li>
+												<li> Auto Contrast<sup>*</sup> </li>
+												<li> Image Denoisification<sup>*</sup> </li>
+												<li> Making Colors Pop<sup>*</sup> </li>
+												<li> Operation Order<sup>*</sup> </li>
+											</ol>
+										</div>
+									<div class="col-4 col-12-small">
+										<b>Appendix</b>
+										<ol>
+											<li> Additional Images </li>
+											<li> Photo Gallery </li>
+											<li> Offset Values </li>
+										</ol>
+									</div>
+									</div>
+								<sub>* improvements on base solution</sub>
+								<hr>
+
+								<h2>Color Channel Alignment</h2>
+								For each image we're actually working with three different images, one for each different filter used to take the pictures.
+								<center>
+									<img src="images/raw/cathedral.jpg" alt="" />
+									<img src="images/raw/monastery.jpg" alt="" />
+								</center>
+								<p>
+								We need to first split up this image into three channels and then align them so we can get a desirable colored image. Sadly, we can't just naively overlap the channels because the channels are ever so slightly different from each other. These differences could have popped up through factors like moving subjects or slight changes in camera movement. So, we need a way to align these channels based using channel data. 
+							  </p>
+
+								<h3>1. Dissimilarity Metric</h3>
+								<p>
+									A dissmilarity metric helps us score how well two channels align. We can use it as a cost function to get channel alignments which minimize this metric. I tried two such metrics: <u>Sum of Squared Differences (SSD)</u> distance and the <u>Normalized Cross-Correlation (NCC)</u>, which is simply a dot product between two normalized vectors. <br><br>
+									Between the two, I found SSD was providing better results so I used that as my metric. Here are the images from above aligned using SSD<sup>*</sup> by trying offsets in <code>[-20, 20]</code>  along both axis.
+								<center>
+									<a class="image"><img src="images/base_outputs/cathedral.jpg" alt="" /></a>
+									<a class="image"><img src="images/base_outputs/monastery.jpg" alt="" /></a>
+								</center>
+								<sub><sup>*</sup> + a couple other tricks mentioned later.</sub>
+								</p>
+
+								<h3>2. Image Pyramid Alignment & Parameters</h3>
+								<p>
+									While just simple alignment using SSD worked for low res images, naively doing that for larger images using a small fixed offset bound to search from would neither work very well nor would be efficient. I implemented Image Pyramid alignment which aligns high resolution images efficiently by downscaling them by a preset scaling factor multiple times. The algorithm uses the the best alignment offsets from the last level (lower level resolution) to calculate the offset bound to search in at the current resolution. Recursively doing this let's us search a few offsets to find a good alignment. <br>
+								</p>
+								<p>
+										<a class="image right"><img src="images/base_outputs/castle.jpg" alt="" /></a>
+
+									<ul>
+										Parameters:
+										<li> Scaling Factor: 0.75</li>
+										<li> Number of levels: 9 </li>
+									</ul>
+
+									I downscaled high resolution image with the factor: <code>scaling_factor ^ num_levels</code> using multiple values of these parameters and went with the ones above because they yielded an image that wasn't <i>too</i> downscaled & the <code>[-20, 20]</code> intuitively made sense at that level. 
+								</p>
+
+								<h3>3. Alignment Region</h3>
+								<p>
+									Simply just aligning channels doesn't yield the best results as the images have funky borders and in most pictures inspected the core details to be aligned are in the center portion of the image. First, I just cropped the image & aligned the cropped image using and got much better alignments but I didn't want to lose image information at the start. Thankfully, there was a simple fix to this. I could just align on a cropped version of the image & then use the offsets from that to align the original uncropped channels to get a complete colored image. <br><br>
+									Emperically I found aligning on the central ~65% of the image (along both axes) gave the best results. The images in the sections above used this trick for alignment.<br>
+								</p>
+								<p>
+									You can <i>hover</i> on the image to see how the channels aligned without a cropped central alignment region. 
+								<center>
+									<img src="images/align-region/train.jpg"
+											 onmouseover="this.src='./images/no-align-region/train.jpg'"
+											 onmouseout="this.src='./images/align-region/train.jpg'"
+											 class="image small"/>
+									<img src="images/align-region/lady.jpg"
+											 onmouseover="this.src='./images/no-align-region/lady.jpg'"
+											 onmouseout="this.src='./images/align-region/lady.jpg'"
+											 class="image small"/>
+								</center>
+								</p>
+								<p>
+									In addition to this, I was thinking of having a weighted SSD which weighted difference in the center more than than the differences towards the others. Should be easily implemented with a mask and/or changes to the SSD metric. I didn't explore it because which I was quite happy with the alignment with just just a central alignment region.
+								</p>
+
+								<h3>4. Padded Roll</h3>
+								<p>
+									<code>np.roll</code> is our friend and is super helpful for moving the image pixels after we calculate the offsets but it also <i>rolls</i> over a region of the offset size to the opposite side which gives us some weird colored bars. This could be tackled in a couple ways. One obvious one is to just crop the image by the offset size to get rid of the bars. Another is to padded the sides with the original values from the image. I chose the latter because I didn't want to lose information in a preprocessing step and because I noticed most images have uniform color in the offset margins (Ex. sky) so padding wouldn't look weird.
+								</p>
+
+								<h3>5. Edge/Gradient Alignment</h3>
+								<p>
+									So far we have only aligned on raw pixel intensities from the different color channels which can lead to weird results like in the case of <code>emir.tif</code>. We can also use edge detectors to process the channels first & then use those outputs to align the images. I tried two edge detectors: the Canny edge detector (uses image gradients) and the Sobel filter. Both worked quite well for <code>emir.tif</code> BUT they weren't universally better for all images so I didn't end up using them for my final images. Instead, I used the next trick as it was able to get good alignments for <i>all</i> images.
+								</p>
+
+
+								<h3>6. Base Channel Selection</h3>
+								<p>
+									For the longest time I had been using the blue channel as my base for alignments arbitrarily & I never questioned it. While trying to figure out how to make alignments work for <code>emir.tif</code> AND all the other images at the same time, the thought of using a different base channel hit me while looking at the emir's raw channels. I generated colored images using each channel as a base and inspected them.
+								</p>
+								<p>
+								<center>
+								<div class='row'>
+										<div class="col-4 col-12-small">
+											<figcaption> Red Base </figcaption>
+											<img src="images/r_base/emir.jpg" class="image fit"/>
+										</div>
+										<div class="col-4 col-12-small">
+											<figcaption> Green Base </figcaption>
+											<img src="images/g_base/emir.jpg" class="image fit"/>
+										</div>
+										<div class="col-4 col-12-small">
+											<figcaption> Blue Base </figcaption>
+											<img src="images/b_base/emir.jpg" class="image fit"/>
+									</div>
+								<div class='row'>
+										<div class="col-4 col-12-small">
+											<img src="images/r_base/monastery.jpg" class="image fit"/>
+										</div>
+										<div class="col-4 col-12-small">
+											<img src="images/g_base/monastery.jpg" class="image fit"/>
+										</div>
+										<div class="col-4 col-12-small">
+											<img src="images/b_base/monastery.jpg" class="image fit"/>
+									</div>
+
+								</center>
+								</p>
+								<p>
+									There's a clear difference in the picture of the Emir. As for others, the difference is extremely subtle – but still present. That is why I chose green as my base as it provided consistently good results for all images.
+								</p>
+
+								<hr>
+								<h2>Image Processing</h2>
+								<p>Yay! We have some solid pictures now. Time to make them look pretty.</p>
+
+								<h3>1. Border Cropping</h3>
+								<p>
+									There are a lot of ways to go about border cropping, I chose a dynamic fixed crop-margin to crop because most images I was working with had very similar-sized borders. This was super simple to implement, maintained the images' aspect ratio, and is really quick as well. Note: It's important that we crop first so the funky colors don't affect the later color processing stages.
+
+								</p>
+								<p>
+									<center>
+										<figcaption><i>Hover</i> to see the difference :)</figcaption>
+										<img src="images/final_aligned/icon.jpg"
+												 onmouseover="this.src='images/g_base/icon.jpg'"
+												 onmouseout="this.src='images/final_aligned/icon.jpg'"
+												 class="image small"/>
+
+										<img src="images/final_aligned/castle.jpg"
+												 onmouseover="this.src='images/g_base/castle.jpg'"
+												 onmouseout="this.src='images/final_aligned/castle.jpg'"
+												 class="image small"/>
+									</center>
+								</p>
+
+								<h3>2. Auto White Balancing</h3>
+								<img src="images/awb/cathedral.jpg"
+										 onmouseover="this.src='images/final_aligned/cathedral.jpg'"
+										 onmouseout="this.src='images/awb/cathedral.jpg'"
+										 class="image right"/>
+
+								<p>
+									First converted the colored picture to grayscale to find the brightest pixel. Using that pixel's as the reference color, I scaled all pixel values (of the original colored image) such that the brightest pixel is white.
+								</p>
+								<p>
+									White balancing didn't have a major effect on most images in their current form, but later we'll see how it can make a lot of difference by daisy chaining it with other image processing filters.
+								</p>
+
+								<h3>3. Auto Contrast</h3>
+								<div class="image right">
+									<img src="images/auto_contrast/onion_church_fail.jpg"/>
+									<center><figcaption>Contrast Fail</figcaption></center>
+								</div>
+								<p>
+									Playing with contrast was quite fun! In my first go at it, I implemented a <u>Histogram Equalization</u> algorithm using the CDF and then applied it to... the RGB channels of the image. Needless to say, the results were trash because the colors were all over the place (right). Looking more into this I realized I need a way to tweak the brightness of the image without changing affecting the overall colors. To achieve this, I transformed the image from RGB space to <u>HSB space</u> and then applied the algorithm to only the brightness layer.
+								</p>
+								<p>
+									For some images this introduced additional undesirable artifacts but for it yielded great results like the one below. 
+								</p>
+								<p>
+								<center>
+								<figcaption><i>Hover</i> to see the difference :)</figcaption>
+								<img src="images/auto_contrast/workshop.jpg"
+										 onmouseover="this.src='images/final_aligned/workshop.jpg'"
+										 onmouseout="this.src='images/auto_contrast/workshop.jpg'"
+										 class="image large"/>
+								</center>
+
+								</p>
+
+
+								<h3>4. Image Denoisification</h3>
+								<p>
+									Looking at the additional artifacts brought on by the auto-contrast, I questioned if reducing image noise before running auto-contrast could help with this problem. I found that the answer is both yes & no. If you strong noise reduction then, yeah, it does help there but the image loses so much detail that I don't think it's worth doing. And if you do too little, you preserve the detail but the contrast still messes up on those images. Maybe there's a sweet spot where it works but I couldn't find it for the two denoisifier functions I was using: <code>cv2.fastNlMeansDenoisingColored()</code> and <code>skimage.restoration.denoise_tv_chambolle</code>.
+								</p>
+
+
+								<h3>5. Making Colors Pop</h3>
+								<p>
+									At this point I had some decent looking pictures, but they were just that – decent. If the Emir was looking at the picture today he probably wouldn't post it on Instagram. The pictures just weren't <i>punchy</i> like all the other pictures we see today on social media. I wanted to fix this.
+								</p>
+								<p>
+									I don't know the first thing about actual photo editing, I just had a faint idea that what I was looking for had something to do with the <i>saturation</i> of the image. Now, in <u>HSB space</u> you can tweak you saturation directly without messing up the colors. But how should you tweak it? I was lazy so for my first try I just threw the <u>Histogram Equalization</u>  algorithm I wrote for auto-contrast at the saturation layer. Just doing that gave me exactly what I was looking for! 
+									<center>
+										<figcaption><i>Hover</i> to see the difference :)</figcaption>
+										<img src="images/auto_saturate/emir.jpg"
+												 onmouseover="this.src='images/final_aligned/emir.jpg'"
+												 onmouseout="this.src='images/auto_saturate/emir.jpg'"
+												 class="image small"/>
+
+										<img src="images/auto_saturate/three_generations.jpg"
+												 onmouseover="this.src='images/final_aligned/three_generations.jpg'"
+												 onmouseout="this.src='images/auto_saturate/three_generations.jpg'"
+												 class="image small"/>
+
+										<img src="images/auto_saturate/onion_church.jpg"
+												 onmouseover="this.src='images/final_aligned/onion_church.jpg'"
+												 onmouseout="this.src='images/auto_saturate/onion_church.jpg'"
+												 class="image small"/>
+
+										<img src="images/auto_saturate/self_portrait.jpg"
+												 onmouseover="this.src='images/final_aligned/self_portrait.jpg'"
+												 onmouseout="this.src='images/auto_saturate/self_portrait.jpg'"
+												 class="image small"/>
+
+									</center>
+								</p>
+
+
+								<h3>6. Operation Order</h3>
+								<p>
+									We have all these filters to apply now, but we still need to decide in what order we should run them. Applying these filters in different order yields fairly different results. I think at this point, the <i>best</i> image is really subjective and it really comes down to personal preference. To see different results I just ran images through different pipelines & saved the results. Here a few of these comparison images.
+								</p>
+
+									<center>
+										<figcaption>Row 1: Original, Color, Color->AWB, Color->AWB->AC, Color->AWB->AC->AWB</figcaption>
+										<figcaption>Row 2: Original, AWB, AWB->AC, AWB->AC->AWB, AWB->AC->AWB->Color</figcaption>
+										<figcaption>Row 3: Original, AC, AC->AWB, AC->AWB->AC, AC->AWB->AC->Color</figcaption>
+
+										<img src="images/compare/emir.jpg"
+												 class="image larger"/>
+										<img src="images/compare/workshop.jpg"
+												 class="image larger"/>
+										<img src="images/compare/lady.jpg"
+												 class="image larger"/>
+										<br>
+
+									</center>
+
+									<hr>
+									<h2>Appendix</h2>
+
+									<h3>1. Additional Images</h3>
+									<p>Some pictures I picked from the Library of Congress website & colorized.</p> <br>
+
+
+
+									<h3>2. Offset Values</h3>
+									<p>Here's a table of the offset/displacement values for the Red & Blue channels used for alignment.</p> <br>
+									<div class="table-wrapper">
+										<table border="1" class="dataframe">
+										  <thead>
+										    <tr style="text-align: right;">
+										      <th>Image Name</th>
+										      <th>Red Channel Offset</th>
+										      <th>Blue Channel Offset</th>
+										    </tr>
+										  </thead>
+										  <tbody>
+										    <tr>
+										      <td>workshop</td>
+										      <td>52 and -11</td>
+										      <td>-53 and 0</td>
+										    </tr>
+										    <tr>
+										      <td>emir</td>
+										      <td>57 and 17</td>
+										      <td>-49 and -24</td>
+										    </tr>
+										    <tr>
+										      <td>three_generations</td>
+										      <td>59 and -3</td>
+										      <td>-53 and -14</td>
+										    </tr>
+										    <tr>
+										      <td>castle</td>
+										      <td>64 and 2</td>
+										      <td>-34 and -3</td>
+										    </tr>
+										    <tr>
+										      <td>melons</td>
+										      <td>96 and 3</td>
+										      <td>-82 and -11</td>
+										    </tr>
+										    <tr>
+										      <td>onion_church</td>
+										      <td>57 and 10</td>
+										      <td>-51 and -27</td>
+										    </tr>
+										    <tr>
+										      <td>train</td>
+										      <td>43 and 27</td>
+										      <td>-43 and -6</td>
+										    </tr>
+										    <tr>
+										      <td>icon</td>
+										      <td>48 and 5</td>
+										      <td>-41 and -17</td>
+										    </tr>
+										    <tr>
+										      <td>self_portrait</td>
+										      <td>98 and 8</td>
+										      <td>-79 and -29</td>
+										    </tr>
+										    <tr>
+										      <td>harvesters</td>
+										      <td>65 and -3</td>
+										      <td>-59 and -17</td>
+										    </tr>
+										    <tr>
+										      <td>lady</td>
+										      <td>62 and 4</td>
+										      <td>-55 and -9</td>
+										    </tr>
+										    <tr>
+										      <td>monastery</td>
+										      <td>6 and 1</td>
+										      <td>3 and -2</td>
+										    </tr>
+										    <tr>
+										      <td>tobolsk</td>
+										      <td>4 and 1</td>
+										      <td>-3 and -3</td>
+										    </tr>
+										    <tr>
+										      <td>cathedral</td>
+										      <td>7 and 1</td>
+										      <td>-5 and -2</td>
+										    </tr>
+										  </tbody>
+										</table>
+									</div>
+
+
+
+							</article>
+
+					<footer id="footer">
+						<section>
+							<form method="post" action="#">
+								<div class="fields">
+									<div class="field">
+										<label for="name">Name</label>
+										<input type="text" name="name" id="name" />
+									</div>
+									<div class="field">
+										<label for="email">Email</label>
+										<input type="text" name="email" id="email" />
+									</div>
+									<div class="field">
+										<label for="message">Message</label>
+										<textarea name="message" id="message" rows="3"></textarea>
+									</div>
+								</div>
+								<ul class="actions">
+									<li><input type="submit" value="Send Message" /></li>
+								</ul>
+							</form>
+						</section>
+						<section class="split contact">
+							<section class="alt">
+								<h3>Address</h3>
+								<p>1234 Somewhere Road #87257<br />
+								Nashville, TN 00000-0000</p>
+							</section>
+							<section>
+								<h3>Phone</h3>
+								<p><a>(000) 000-0000</a></p>
+							</section>
+							<section>
+								<h3>Email</h3>
+								<p><a>info@untitled.tld</a></p>
+							</section>
+							<section>
+								<h3>Social</h3>
+								<ul class="icons alt">
+									<li><a class="icon brands alt fa-twitter"><span class="label">Twitter</span></a></li>
+									<li><a class="icon brands alt fa-facebook-f"><span class="label">Facebook</span></a></li>
+									<li><a class="icon brands alt fa-instagram"><span class="label">Instagram</span></a></li>
+									<li><a class="icon brands alt fa-github"><span class="label">GitHub</span></a></li>
+								</ul>
+							</section>
+						</section>
+					</footer>
+
+
+
+					<div id="copyright">
+						<ul><li>&copy; Untitled</li><li>Design: <a href="https://html5up.net">HTML5 UP</a></li></ul>
+					</div>
+
+			</div>
+
+		<!-- Scripts -->
+			<script src="assets/js/jquery.min.js"></script>
+			<script src="assets/js/jquery.scrollex.min.js"></script>
+			<script src="assets/js/jquery.scrolly.min.js"></script>
+			<script src="assets/js/browser.min.js"></script>
+			<script src="assets/js/breakpoints.min.js"></script>
+			<script src="assets/js/util.js"></script>
+			<script src="assets/js/main.js"></script>
+
+	</body>
+</html>
