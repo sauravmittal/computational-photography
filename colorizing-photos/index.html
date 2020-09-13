@@ -20,9 +20,9 @@
 				<!-- Intro -->
 					<div id="intro">
 						<h1>COMPSCI 194-26: Project 1<br> <br> Images of the Russian Empire <br></h1>
-						<p style="background-color: rgba(256, 32, 16, 0.35);
+						<p style="background-color: rgba(16, 16, 16, 0.55);
 										  padding: 0.25rem 1rem;
-										  border-color: rgba(256, 32, 16, 0.5);">
+										  border-color: rgba(16, 16, 16, 0.5);">
 							<b>Saurav Mittal</b> | saurav@berkeley.edu 
 						</p> <br><br>
 					</div>
@@ -31,15 +31,12 @@
 					<div id="main">
 
 						<!-- Featured Post -->
-							<article class="post featured">
+<!-- 							<article class="post featured">
 								<header class="major">
-									<h2>Introduction</h2>
-									<p>Back in early 20<sup>th</sup> century there was this Russian dude who dreamed of colored photography in a world of dull B&W pictures. He travelled across the Russian empire & photographed everything he saw through three different colored filters (red, green, and blue). Now we're going use his 100 year old digitized glass plate negatives to produce colored pictures of Russia.</p> 
-									<p> More information and background about this <a href='https://inst.eecs.berkeley.edu/~cs194-26/fa20/hw/proj1/'>here </a> </p>
 								</header>
 								
 							</article>
-
+ -->
 						<!-- Featured Post -->
 							<article class="post">
 								<header class="major">
@@ -47,54 +44,67 @@
 									<p>Most of the work done & listed is just <strike>additional exploration</strike> <i>Bells & Whistles</i> to improve the overall perceived quality of the final image. This was done by improving channel alignment through neat tricks and post-processing the image to enhance aesthetics. </p>
 								</header>
 
-
 								<h2>Results Sneak Peak</h2>
-									<a class="image main"><img src="images/compare/workshop.jpg" alt="" /></a>
+									<a class="image main" style="margin-top: -0.5rem;"><img src="images/compare/workshop.jpg"/></a>
 								<hr>
 
 								<h2>Table of Contents</h2>
+								<div class="row">
+									<div class="col-12 col-12-small">
+										<a href="#introduction"><b>Introduction</b></a>
+									</div>
+
+								</div>
 								<div class='row'>
-										<div class="col-4 col-12-small">
+									<div class="col-6 col-12-small">
 
-											<b>Color Channel Alignment</b>
-											<ol>
-												<li> Dissimilarity Metric </li>
-												<li> Image Pyramid Alignment & Parameters </li>
-												<li> Alignment Region<sup>*</sup> </li>
-												<li> Padded Rolling<sup>*</sup> </li>
-												<li> Edge/Gradient Alignment<sup>*</sup> </li>
-												<li> Base Channel Selection<sup>*</sup> </li>
-											</ol>
-										</div>
-										<div class="col-4 col-12-small">
-
-											<b>Image Processing</b>
-											<ol>
-												<li> Border Cropping<sup>*</sup> </li>
-												<li> Auto White Balancing<sup>*</sup> </li>
-												<li> Auto Contrast<sup>*</sup> </li>
-												<li> Image Denoisification<sup>*</sup> </li>
-												<li> Making Colors Pop<sup>*</sup> </li>
-												<li> Operation Order<sup>*</sup> </li>
-											</ol>
-										</div>
-									<div class="col-4 col-12-small">
-										<b>Appendix</b>
+										<a href="#channel-alignment"><b>Color Channel Alignment</b></a>
 										<ol>
-											<li> Additional Images </li>
+											<li> Dissimilarity Metric </li>
+											<li> Image Pyramid Alignment & Parameters </li>
+											<li> Alignment Region<sup>*</sup> </li>
+											<li> Padded Rolling<sup>*</sup> </li>
+											<li> Edge/Gradient Alignment<sup>*</sup> </li>
+											<li> Base Channel Selection<sup>*</sup> </li>
+										</ol>
+									</div>
+									<div class="col-6 col-12-small">
+
+										<a href="#image-processing"><b>Image Processing</b></a>
+										<ol>
+											<li> Border Cropping<sup>*</sup> </li>
+											<li> Auto White Balancing<sup>*</sup> </li>
+											<li> Auto Contrast<sup>*</sup> </li>
+											<li> Image Denoisification<sup>*</sup> </li>
+											<li> Making Colors Pop<sup>*</sup> </li>
+											<li> Operation Order<sup>*</sup> </li>
+										</ol>
+									</div>
+								</div>
+								<div class="row">
+									<div class="col-12 col-12-small">
+										<a href="#appendix"><b>Appendix</b></a>
+										<ol>
 											<li> Photo Gallery </li>
+											<li> Additional Images </li>
 											<li> Offset Values </li>
 										</ol>
 									</div>
-									</div>
+								</div>
 								<sub>* improvements on base solution</sub>
 								<hr>
 
-								<h2>Color Channel Alignment</h2>
+								<h2 id='introduction'>Introduction</h2>
+								<p>Sergei Mikhailovich Prokudin-Gorskii (1863-1944) [Сергей Михайлович Прокудин-Горский, to his Russian friends] was a man well ahead of his time. Convinced, as early as 1907, that color photography was the wave of the future, he won Tzar's special permission to travel across the vast Russian Empire and take color photographs of everything he saw including the only color portrait of Leo Tolstoy. And he really photographed everything: people, buildings, landscapes, railroads, bridges... thousands of color pictures! His idea was simple: record three exposures of every scene onto a glass plate using a red, a green, and a blue filter. </p> 
+								<p>He envisioned special projectors to be installed in "multimedia" classrooms all across Russia where the children would be able to learn about their vast country. Alas, his plans never materialized: he left Russia in 1918, right after the revolution, never to return again. Luckily, his RGB glass plate negatives, capturing the last years of the Russian Empire, survived and were purchased in 1948 by the <u>Library of Congress</u>. The LoC has recently digitized the negatives and made them available on-line.</p> 
+								<p>Now, I'm going to attempt to colorize these use these exposures to get colorized images of 20<sup>th</sup> century Russia.</p> 
+
+								<hr>
+								<h2 id="channel-alignment">Color Channel Alignment</h2>
 								For each image we're actually working with three different images, one for each different filter used to take the pictures.
 								<center>
-									<img src="images/raw/cathedral.jpg" alt="" />
-									<img src="images/raw/monastery.jpg" alt="" />
+									<img src="images/raw/cathedral.jpg"/>
+									<img src="images/raw/monastery.jpg"/>
 								</center>
 								<p>
 								We need to first split up this image into three channels and then align them so we can get a desirable colored image. Sadly, we can't just naively overlap the channels because the channels are ever so slightly different from each other. These differences could have popped up through factors like moving subjects or slight changes in camera movement. So, we need a way to align these channels based using channel data. 
@@ -105,8 +115,8 @@
 									A dissmilarity metric helps us score how well two channels align. We can use it as a cost function to get channel alignments which minimize this metric. I tried two such metrics: <u>Sum of Squared Differences (SSD)</u> distance and the <u>Normalized Cross-Correlation (NCC)</u>, which is simply a dot product between two normalized vectors. <br><br>
 									Between the two, I found SSD was providing better results so I used that as my metric. Here are the images from above aligned using SSD<sup>*</sup> by trying offsets in <code>[-20, 20]</code>  along both axis.
 								<center>
-									<a class="image"><img src="images/base_outputs/cathedral.jpg" alt="" /></a>
-									<a class="image"><img src="images/base_outputs/monastery.jpg" alt="" /></a>
+									<a class="image"><img src="images/base_outputs/cathedral.jpg"/></a>
+									<a class="image"><img src="images/base_outputs/monastery.jpg"/></a>
 								</center>
 								<sub><sup>*</sup> + a couple other tricks mentioned later.</sub>
 								</p>
@@ -116,7 +126,7 @@
 									While just simple alignment using SSD worked for low res images, naively doing that for larger images using a small fixed offset bound to search from would neither work very well nor would be efficient. I implemented Image Pyramid alignment which aligns high resolution images efficiently by downscaling them by a preset scaling factor multiple times. The algorithm uses the the best alignment offsets from the last level (lower level resolution) to calculate the offset bound to search in at the current resolution. Recursively doing this let's us search a few offsets to find a good alignment. <br>
 								</p>
 								<p>
-										<a class="image right"><img src="images/base_outputs/castle.jpg" alt="" /></a>
+										<a class="image right"><img src="images/base_outputs/castle.jpg"/></a>
 
 									<ul>
 										Parameters:
@@ -197,7 +207,7 @@
 								</p>
 
 								<hr>
-								<h2>Image Processing</h2>
+								<h2 id="image-processing">Image Processing</h2>
 								<p>Yay! We have some solid pictures now. Time to make them look pretty.</p>
 
 								<h3>1. Border Cropping</h3>
@@ -271,24 +281,24 @@
 									<center>
 										<figcaption><i>Hover</i> to see the difference :)</figcaption>
 										<img src="images/auto_saturate/emir.jpg"
-												 onmouseover="this.src='images/final_aligned/emir.jpg'"
-												 onmouseout="this.src='images/auto_saturate/emir.jpg'"
-												 class="image small"/>
+											 onmouseover="this.src='images/final_aligned/emir.jpg'"
+											 onmouseout="this.src='images/auto_saturate/emir.jpg'"
+											 class="image small"/>
 
 										<img src="images/auto_saturate/three_generations.jpg"
-												 onmouseover="this.src='images/final_aligned/three_generations.jpg'"
-												 onmouseout="this.src='images/auto_saturate/three_generations.jpg'"
-												 class="image small"/>
+											 onmouseover="this.src='images/final_aligned/three_generations.jpg'"
+											 onmouseout="this.src='images/auto_saturate/three_generations.jpg'"
+											 class="image small"/>
 
 										<img src="images/auto_saturate/onion_church.jpg"
-												 onmouseover="this.src='images/final_aligned/onion_church.jpg'"
-												 onmouseout="this.src='images/auto_saturate/onion_church.jpg'"
-												 class="image small"/>
+											 onmouseover="this.src='images/final_aligned/onion_church.jpg'"
+											 onmouseout="this.src='images/auto_saturate/onion_church.jpg'"
+											 class="image small"/>
 
 										<img src="images/auto_saturate/self_portrait.jpg"
-												 onmouseover="this.src='images/final_aligned/self_portrait.jpg'"
-												 onmouseout="this.src='images/auto_saturate/self_portrait.jpg'"
-												 class="image small"/>
+											 onmouseover="this.src='images/final_aligned/self_portrait.jpg'"
+											 onmouseout="this.src='images/auto_saturate/self_portrait.jpg'"
+											 class="image small"/>
 
 									</center>
 								</p>
@@ -299,31 +309,186 @@
 									We have all these filters to apply now, but we still need to decide in what order we should run them. Applying these filters in different order yields fairly different results. I think at this point, the <i>best</i> image is really subjective and it really comes down to personal preference. To see different results I just ran images through different pipelines & saved the results. Here a few of these comparison images.
 								</p>
 
+									<figcaption>Row 1: Original, Color, Color->AWB, Color->AWB->AC, Color->AWB->AC->AWB</figcaption>
+									<figcaption>Row 2: Original, AWB, AWB->AC, AWB->AC->AWB, AWB->AC->AWB->Color</figcaption>
+									<figcaption>Row 3: Original, AC, AC->AWB, AC->AWB->AC, AC->AWB->AC->Color</figcaption>
+									<br>
 									<center>
-										<figcaption>Row 1: Original, Color, Color->AWB, Color->AWB->AC, Color->AWB->AC->AWB</figcaption>
-										<figcaption>Row 2: Original, AWB, AWB->AC, AWB->AC->AWB, AWB->AC->AWB->Color</figcaption>
-										<figcaption>Row 3: Original, AC, AC->AWB, AC->AWB->AC, AC->AWB->AC->Color</figcaption>
-
+										<code>emir.tif</code> 
 										<img src="images/compare/emir.jpg"
-												 class="image larger"/>
+												 class="image fit"/> <br>
+
+										<code>workshop.tif</code> 
 										<img src="images/compare/workshop.jpg"
-												 class="image larger"/>
+												 class="image fit"/> <br>
+
+										<code>lady.tif</code> 
 										<img src="images/compare/lady.jpg"
-												 class="image larger"/>
-										<br>
+												 class="image fit"/> 
 
 									</center>
 
 									<hr>
-									<h2>Appendix</h2>
+									<h2 id="appendix">Appendix</h2>
 
-									<h3>1. Additional Images</h3>
-									<p>Some pictures I picked from the Library of Congress website & colorized.</p> <br>
+									<h3>1. Photo Gallery</h3>
+									<p>I looked at multiple processed images for each image & then picked a personal favorite. I think they came out great! Hover over them to see all the post-processing magic :)</p>
+
+									<div class="box alt">
+										<div class="row gtr-50 gtr-uniform">
+											<!-- Break -->
+											<div class="col-6">
+												<span class="image fit">
+													<img src="images/favorite/emir.jpg"
+														 onmouseover="this.src='images/final_aligned/emir.jpg'"
+														 onmouseout="this.src='images/favorite/emir.jpg'"
+														 class="fit"/>
+												</span>
+											</div>
+											<div class="col-6">
+												<span class="image fit">
+													<img src="images/favorite/self_portrait.jpg"
+														 onmouseover="this.src='images/final_aligned/self_portrait.jpg'"
+														 onmouseout="this.src='images/favorite/self_portrait.jpg'"
+														 class="fit"/>
+												</span>
+											</div>
+											<!-- Break -->
+											<div class="col-4">
+												<span class="image fit">
+													<img src="images/favorite/train.jpg"
+														 onmouseover="this.src='images/final_aligned/train.jpg'"
+														 onmouseout="this.src='images/favorite/train.jpg'"/>
+												</span>
+											</div>
+											<div class="col-4">
+												<span class="image fit">
+													<img src="images/favorite/melons.jpg"
+														 onmouseover="this.src='images/final_aligned/melons.jpg'"
+														 onmouseout="this.src='images/favorite/melons.jpg'"/>
+												</span>
+											</div>
+											<div class="col-4">
+												<span class="image fit">
+													<img src="images/favorite/castle.jpg"
+														 onmouseover="this.src='images/final_aligned/castle.jpg'"
+														 onmouseout="this.src='images/favorite/castle.jpg'"/>
+												</span>
+											</div>
+											<!-- Break -->
+											<div class="col-6">
+												<span class="image fit">
+													<img src="images/favorite/icon.jpg"
+														 onmouseover="this.src='images/final_aligned/icon.jpg'"
+														 onmouseout="this.src='images/favorite/icon.jpg'"
+														 class="fit"/>
+												</span>
+											</div>
+											<div class="col-6">
+												<span class="image fit">
+													<img src="images/favorite/harvesters.jpg"
+														 onmouseover="this.src='images/final_aligned/harvesters.jpg'"
+														 onmouseout="this.src='images/favorite/harvesters.jpg'"
+														 class="fit"/>
+												</span>
+											</div>
+											<!-- Break -->
+											<div class="col-6">
+												<span class="image fit">
+													<img src="images/favorite/workshop.jpg"
+														 onmouseover="this.src='images/final_aligned/workshop.jpg'"
+														 onmouseout="this.src='images/favorite/workshop.jpg'"
+														 class="fit"/>
+												</span>
+											</div>
+											<div class="col-6">
+												<span class="image fit">
+													<img src="images/favorite/onion_church.jpg"
+														 onmouseover="this.src='images/final_aligned/onion_church.jpg'"
+														 onmouseout="this.src='images/favorite/onion_church.jpg'"
+														 class="fit"/>
+												</span>
+											</div>
+											<!-- Break -->
+											<div class="col-4">
+												<span class="image fit">
+													<img src="images/favorite/tobolsk.jpg"
+														 onmouseover="this.src='images/final_aligned/tobolsk.jpg'"
+														 onmouseout="this.src='images/favorite/tobolsk.jpg'"/>
+												</span>
+											</div>
+											<div class="col-4">
+												<span class="image fit">
+													<img src="images/favorite/cathedral.jpg"
+														 onmouseover="this.src='images/final_aligned/cathedral.jpg'"
+														 onmouseout="this.src='images/favorite/cathedral.jpg'"/>
+												</span>
+											</div>
+											<div class="col-4">
+												<span class="image fit">
+													<img src="images/favorite/monastery.jpg"
+														 onmouseover="this.src='images/final_aligned/monastery.jpg'"
+														 onmouseout="this.src='images/favorite/monastery.jpg'"/>
+												</span>
+											</div>
+
+											<!-- Break -->
+											<div class="col-6">
+												<span class="image fit">
+													<img src="images/favorite/three_generations.jpg"
+														 onmouseover="this.src='images/final_aligned/three_generations.jpg'"
+														 onmouseout="this.src='images/favorite/three_generations.jpg'"
+														 class="fit"/>
+												</span>
+											</div>
+											<div class="col-6">
+												<span class="image fit">
+													<img src="images/favorite/lady.jpg"
+														 onmouseover="this.src='images/final_aligned/lady.jpg'"
+														 onmouseout="this.src='images/favorite/lady.jpg'"
+														 class="fit"/>
+												</span>
+											</div>
+
+										</div>
+									</div>
 
 
 
-									<h3>2. Offset Values</h3>
-									<p>Here's a table of the offset/displacement values for the Red & Blue channels used for alignment.</p> <br>
+									<h3>2. Additional Images</h3>
+									<p>Here are some additional pictures from the Library of Congress's website which I colorized (align + post process).</p>
+									<center>
+										<div class="box alt">
+											<div class="row gtr-50 gtr-uniform">
+												<div class="col-4">
+													<span class="image fit">
+														<img src="images/favorite/01043a.jpg"
+															 onmouseover="this.src='images/final_aligned/01043a.jpg'"
+															 onmouseout="this.src='images/favorite/01043a.jpg'"/>
+													</span>
+												</div>
+												<div class="col-4">
+													<span class="image fit">
+														<img src="images/favorite/01273a.jpg"
+															 onmouseover="this.src='images/final_aligned/01273a.jpg'"
+															 onmouseout="this.src='images/favorite/01273a.jpg'"/>
+													</span>
+												</div>
+												<div class="col-4">
+													<span class="image fit">
+														<img src="images/favorite/00674a.jpg"
+															 onmouseover="this.src='images/final_aligned/00674a.jpg'"
+															 onmouseout="this.src='images/favorite/00674a.jpg'"/>
+													</span>
+												</div>
+											</div>
+										</div>
+									</center>
+
+
+
+									<h3>3. Offset Values</h3>
+									<p>The offset/displacement values for the Red & Blue channels used for alignment for result verification.</p> <br>
 									<div class="table-wrapper">
 										<table border="1" class="dataframe">
 										  <thead>
@@ -411,60 +576,6 @@
 
 
 							</article>
-
-					<footer id="footer">
-						<section>
-							<form method="post" action="#">
-								<div class="fields">
-									<div class="field">
-										<label for="name">Name</label>
-										<input type="text" name="name" id="name" />
-									</div>
-									<div class="field">
-										<label for="email">Email</label>
-										<input type="text" name="email" id="email" />
-									</div>
-									<div class="field">
-										<label for="message">Message</label>
-										<textarea name="message" id="message" rows="3"></textarea>
-									</div>
-								</div>
-								<ul class="actions">
-									<li><input type="submit" value="Send Message" /></li>
-								</ul>
-							</form>
-						</section>
-						<section class="split contact">
-							<section class="alt">
-								<h3>Address</h3>
-								<p>1234 Somewhere Road #87257<br />
-								Nashville, TN 00000-0000</p>
-							</section>
-							<section>
-								<h3>Phone</h3>
-								<p><a>(000) 000-0000</a></p>
-							</section>
-							<section>
-								<h3>Email</h3>
-								<p><a>info@untitled.tld</a></p>
-							</section>
-							<section>
-								<h3>Social</h3>
-								<ul class="icons alt">
-									<li><a class="icon brands alt fa-twitter"><span class="label">Twitter</span></a></li>
-									<li><a class="icon brands alt fa-facebook-f"><span class="label">Facebook</span></a></li>
-									<li><a class="icon brands alt fa-instagram"><span class="label">Instagram</span></a></li>
-									<li><a class="icon brands alt fa-github"><span class="label">GitHub</span></a></li>
-								</ul>
-							</section>
-						</section>
-					</footer>
-
-
-
-					<div id="copyright">
-						<ul><li>&copy; Untitled</li><li>Design: <a href="https://html5up.net">HTML5 UP</a></li></ul>
-					</div>
 
 			</div>
 

@@ -2631,10 +2631,17 @@ input, select, textarea {
 		}
 
 		.image.larger {
-			display: inline-block;
-			margin: 1rem;
-			width: 95%;
+			display: block;
+			margin: 1rem 1.5rem;
+			width: 100%;
 		}
+			.image.larger:first-child {
+				margin-top: 0;
+			}
+
+			.image.larger img {
+				width: 100%;
+			}
 
 		.image.smallest {
 			display: inline-block;
