@@ -96,7 +96,7 @@
 
 								<h2 id='introduction'>Introduction</h2>
 								<p>Sergei Mikhailovich Prokudin-Gorskii (1863-1944) [Сергей Михайлович Прокудин-Горский, to his Russian friends] was a man well ahead of his time. Convinced, as early as 1907, that color photography was the wave of the future, he won Tzar's special permission to travel across the vast Russian Empire and take color photographs of everything he saw including the only color portrait of Leo Tolstoy. And he really photographed everything: people, buildings, landscapes, railroads, bridges... thousands of color pictures! His idea was simple: record three exposures of every scene onto a glass plate using a red, a green, and a blue filter. </p> 
-								<p>He envisioned special projectors to be installed in "multimedia" classrooms all across Russia where the children would be able to learn about their vast country. Alas, his plans never materialized: he left Russia in 1918, right after the revolution, never to return again. Luckily, his RGB glass plate negatives, capturing the last years of the Russian Empire, survived and were purchased in 1948 by the <u>Library of Congress</u>. The LoC has recently digitized the negatives and made them available on-line.</p> 
+								<p>He envisioned special projectors to be installed in "multimedia" classrooms all across Russia where the children would be able to learn about their vast country. Alas, his plans never materialized: he left Russia in 1918, right after the revolution, never to return again. Luckily, his RGB glass plate negatives, capturing the last years of the Russian Empire, survived and were purchased in 1948 by the Library of Congress. The Library of Congress has recently <a href="https://www.loc.gov/pictures/collection/prok/">digitized</a> the negatives and made them available online.</p> 
 								<p>Now, I'm going to attempt to colorize these use these exposures to get colorized images of 20<sup>th</sup> century Russia.</p> 
 
 								<hr>
@@ -107,12 +107,12 @@
 									<img src="images/raw/monastery.jpg"/>
 								</center>
 								<p>
-								We need to first split up this image into three channels and then align them so we can get a desirable colored image. Sadly, we can't just naively overlap the channels because the channels are ever so slightly different from each other. These differences could have popped up through factors like moving subjects or slight changes in camera movement. So, we need a way to align these channels based using channel data. 
+								We need to first split up this image into three channels and then align them so we can get a desirable colored image. Sadly, we can't just naively overlap the channels because the channels are ever so slightly different from each other. These differences could have popped up because of moving subjects or slight changes in camera movement. We need a way to align these channels based using channel data. 
 							  </p>
 
 								<h3>1. Dissimilarity Metric</h3>
 								<p>
-									A dissmilarity metric helps us score how well two channels align. We can use it as a cost function to get channel alignments which minimize this metric. I tried two such metrics: <u>Sum of Squared Differences (SSD)</u> distance and the <u>Normalized Cross-Correlation (NCC)</u>, which is simply a dot product between two normalized vectors. <br><br>
+									A dissmilarity metric helps us score how well two channels align. We can use it as a cost function to get channel alignments which minimize this metric. I tried two such metrics: <u>Sum of Squared Differences distance </u> (SSD) and the <u>Normalized Cross-Correlation</u> (NCC), which is simply a dot product between two normalized vectors. <br><br>
 									Between the two, I found SSD was providing better results so I used that as my metric. Here are the images from above aligned using SSD<sup>*</sup> by trying offsets in <code>[-20, 20]</code>  along both axis.
 								<center>
 									<a class="image"><img src="images/base_outputs/cathedral.jpg"/></a>
@@ -123,18 +123,17 @@
 
 								<h3>2. Image Pyramid Alignment & Parameters</h3>
 								<p>
-									While just simple alignment using SSD worked for low res images, naively doing that for larger images using a small fixed offset bound to search from would neither work very well nor would be efficient. I implemented Image Pyramid alignment which aligns high resolution images efficiently by downscaling them by a preset scaling factor multiple times. The algorithm uses the the best alignment offsets from the last level (lower level resolution) to calculate the offset bound to search in at the current resolution. Recursively doing this let's us search a few offsets to find a good alignment. <br>
+									While just simple alignment using SSD worked for low res images, naively doing that for larger images using a small fixed offset bound to search from would neither work very well nor would be efficient. I implemented Image Pyramid alignment which aligns high resolution images efficiently by downscaling them by a preset scaling factor multiple times. The algorithm uses the the best alignment offsets from the last level (lower level resolution) to calculate the offset bound to search in at the current resolution. Recursively doing this helps us find a good alignment by greatly restricting the alignment offset search space. <br>
 								</p>
 								<p>
 										<a class="image right"><img src="images/base_outputs/castle.jpg"/></a>
-
-									<ul>
-										Parameters:
+									Parameters:
+									<ul style="margin-top: -1.5rem;">
 										<li> Scaling Factor: 0.75</li>
 										<li> Number of levels: 9 </li>
 									</ul>
 
-									I downscaled high resolution image with the factor: <code>scaling_factor ^ num_levels</code> using multiple values of these parameters and went with the ones above because they yielded an image that wasn't <i>too</i> downscaled & the <code>[-20, 20]</code> intuitively made sense at that level. 
+									I downscaled high resolution image with the factor: <code>scaling_factor <sup> num_levels</sup></code> using multiple values of these parameters and went with the ones above because they yielded an image that wasn't <i>too</i> downscaled & the <code>[-20, 20]</code> base offset search space intuitively made sense at that level. 
 								</p>
 
 								<h3>3. Alignment Region</h3>
