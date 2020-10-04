@@ -1,0 +1,624 @@
+<!DOCTYPE HTML>
+<!--
+	Massively by HTML5 UP
+	html5up.net | @ajlkn
+	Free for personal and commercial use under the CCA 3.0 license (html5up.net/license)
+-->
+<html>
+	<head>
+		<title>Filters & Frequencies</title>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+		<link rel="stylesheet" href="assets/css/main.css" />
+		<noscript><link rel="stylesheet" href="assets/css/noscript.css" /></noscript>
+	</head>
+	<body class="is-preload">
+
+		<!-- Wrapper -->
+			<div id="wrapper">
+
+				<!-- Intro -->
+					<div id="intro">
+						<h1>COMPSCI 194-26: Project 2<br> <br> Fun with Filters & Frequencies <br></h1>
+						<p style="background-color: rgba(16, 16, 16, 0.55);
+										  padding: 0.25rem 1rem;
+										  border-color: rgba(16, 16, 16, 0.5);">
+							<b>Saurav Mittal</b> | saurav@berkeley.edu 
+						</p> <br><br>
+					</div>
+				
+ 					<!-- Main -->
+					<div id="main">
+
+						<!-- Featured Post -->
+<!-- 							<article class="post featured">
+								<header class="major">
+								</header>
+								
+							</article>
+ -->
+						<!-- Featured Post -->
+							<article class="post">
+								<header class="major">
+									<h2>Project Report</h2>
+								</header>
+
+<!-- 								<h2>Results Sneak Peak</h2>
+									<a class="image main" style="margin-top: -0.5rem;"><img src="images/compare/workshop.jpg"/></a>
+								<hr>
+ -->
+								<h2>Table of Contents</h2>
+								<div class="row">
+									<div class="col-12 col-12-small">
+										<a href="#introduction"><b>Introduction</b></a>
+									</div>
+
+								</div>
+								<div class='row'>
+									<div class="col-12 col-12-small">
+
+										<a href="#filters"><b>Fun with Filters</b></a>
+										<ol>
+											<li> Finite Difference Operator </li>
+											<li> Derivative of Gaussian (DoG) Filter </li>
+											<li> Image Straightening </li>
+										</ol>
+									</div>
+								</div>
+								<div class='row'>
+									<div class="col-12 col-12-small">
+
+										<a href="#frequencies"><b>Fun with Frequencies</b></a>
+										<ol>
+											<li> Image Sharpening </li>
+											<li> Hybrid Images </li>
+											<li> Gaussian and Laplacian Stacks </li>
+											<li> Multiresolution Blending </li>
+										</ol>
+									</div>
+								</div>
+								<hr>
+
+								<h2 id='introduction'>Introduction</h2>
+								<p>
+									This project goes over automated image straightening and explores image frequency manipulation through applications like image sharpening, hybrid images (static images that change in interpretation as a function of the viewing distance) and image blending.
+								</p>
+								<p>
+									I generate hybrid images using the approach described in the SIGGRAPH 2006 <a href='http://olivalab.mit.edu/publications/OlivaTorralb_Hybrid_Siggraph06.pdf'>paper</a> by Oliva, Torralba, and Schyns. The multi resolution blending was implemented as described in the 1983 <a href='http://persci.mit.edu/pub_pdfs/spline83.pdf'>paper</a> by Burt and Adelson.
+
+								<hr>
+								<h2 id="filters">Fun with Filters</h2>
+								<h3>1. Finite Difference Operator</h3>
+								<p>
+									The first filter we explore is the finite difference operator. We first find the partial derivatives of the cameraman image by convolving the image with finite difference operators D_x and D_y. Then we compute the gradient magnitude image. One we have that computed, we binarize the gradient magnitude image by picking the appropriate threshold (trying to suppress the noise while showing all the real edges).
+									<br>
+
+								<center>
+									<figcaption> Original Image </figcaption>
+									<img src="images/cameraman.png"/>
+									<br>
+									<div class='row'>
+										<div class="col-6 col-12-small">
+											<figcaption> Partial Derivative (Dx) </figcaption>
+											<img src="images/cameraman_dx.jpg" class="image fit"/>
+										</div>
+										<div class="col-6 col-12-small">
+											<figcaption> Partial Derivative (Dy) </figcaption>
+											<img src="images/cameraman_dy.jpg" class="image fit"/>
+										</div>
+									</div>
+									<div class='row'>
+										<div class="col-6 col-12-small">
+											<figcaption> Gradient Magnitude </figcaption>
+											<img src="images/cameraman_gradient.jpg" class="image fit"/>
+										</div>
+										<div class="col-6 col-12-small">
+											<figcaption> Edge Image </figcaption>
+											<img src="images/cameraman_edges.jpg" class="image fit"/>
+										</div>
+									</div>
+								</center> 
+
+								</p>
+								<h3>2. Derivative of Gaussian (DoG) Filter</h3>
+								<p>
+									We noted that the results with just the difference operator were rather noisy. Luckily, we have a smoothing operator handy: the Gaussian filter G. We create a blurred version of the original image by convolving with a gaussian and repeat the procedure in the previous part.
+								</p>
+
+								<center>
+									<figcaption> Edge Image (Gaussian Preprocessing) </figcaption>
+									<img src="images/cameraman_edges_gauss.jpg"/>
+									<br><br>
+								</center>
+								<p>
+									Now we can do the same thing with a single convolution instead of two by creating a derivative of gaussian filters. We compute those by convolving the gaussian with D_x and D_y.
+								</p>
+								<center>
+									<figcaption> Edge Image (DoG Filter) </figcaption>
+									<img src="images/cameraman_edges_dog.jpg"/>
+									<br><br>
+								</center>
+								<p>
+									We observe the edges produced by the two techniques lead the same results using the same threshold, as expected.
+								</p>
+
+								<h3>3. Image Straightening</h3>
+								<p>
+									Now we will automate the image straightening process! It is known that statistically there is a preference for vertical and horizontal edges in most images (due to gravity!). We will use this insight by trying to rotate an image to maximize the number of vertical and horizontal edges. 
+									<br><br>
+									To straighten an image, we generate a set of proposed rotations. For each proposed rotation angle:
+									<ol>
+										<li>Rotate the image by the proposed rotation angle.</li>
+										<li>Compute the gradient angle of the edges in the image while ignoring the edges of the image created by rotation itself by cropping the image after rotation. </li>
+									</ol>
+									Finally, pick the rotation with the maximum number of horizontal and vertical edges. <br> <br>
+									To estimate the number of vertical/horizontal edges in the image I transformed the distribution of angles to a form where all the relevant angles (-180, -90, 0, 90, 180) were on one side of the distribution. This made it easier to convert it an optimization problem. Looking at this transformed distribution I thought we could try to find the rotation angle that minimizes the <i>Skewness</i> of the distribution. In practice, this didn't work really well so I thought more and realized that instead of minimizing the third moment I should try to minimize the first moment first. That's that I ended up doing at the end, and found the angles which minimized the the first moment – the mean – of the transformed distribution.
+									<br><br>
+									Here are some results of this algorithm:
+								</p>
+
+								<center>
+									<code>Facade</code>
+									<div class='row'>
+										<div class="col-6 col-12-small">
+											<figcaption> Original Image </figcaption>
+											<img src="images/facade.jpg" class="image fit"/>
+										</div>
+										<div class="col-6 col-12-small">
+											<figcaption> Straightened Image (-3º)</figcaption>
+											<img src="images/facade_straight.jpg" class="image fit"/>
+										</div>
+									</div>
+									<div class='row'>
+										<div class="col-12 col-12-small">
+											<figcaption> Image Angle Distribution </figcaption>
+											<img src="images/facade_theta_dist.jpg" class="image fit"/>
+										</div>
+									</div>
+
+									<br><br>
+									<code>Campanile</code>
+									<div class='row'>
+										<div class="col-6 col-12-small">
+											<figcaption> Original Image </figcaption>
+											<img src="images/campanile.jpg" class="image fit"/>
+										</div>
+										<div class="col-6 col-12-small">
+											<figcaption> Straightened Image (14º)</figcaption>
+											<img src="images/campanile_straight.jpg" class="image fit"/>
+										</div>
+									</div>
+									<div class='row'>
+										<div class="col-12 col-12-small">
+											<figcaption> Image Angle Distribution </figcaption>
+											<img src="images/campanile_theta_dist.jpg" class="image fit"/>
+										</div>
+									</div>
+
+									<br><br>
+									<code>House in SF</code>
+									<div class='row'>
+
+										<div class="col-6 col-12-small">
+											<figcaption> Original Image </figcaption>
+											<img src="images/sf_house.jpg" class="image fit"/>
+										</div>
+										<div class="col-6 col-12-small">
+											<figcaption> Straightened Image (-11º)</figcaption>
+											<img src="images/sf_house_straight.jpg" class="image fit"/>
+										</div>
+									</div>
+									<div class='row'>
+										<div class="col-12 col-12-small">
+											<figcaption> Image Angle Distribution </figcaption>
+											<img src="images/sf_house_theta_dist.jpg" class="image fit"/>
+										</div>
+									</div>
+
+									<br><br>
+									<code>Leaning Tower of Pisa</code>
+									<div class='row'>
+										<div class="col-6 col-12-small">
+											<figcaption> Original Image </figcaption>
+											<img src="images/pisa.jpg" class="image fit"/>
+										</div>
+										<div class="col-6 col-12-small">
+											<figcaption> Straightened Image (14º)</figcaption>
+											<img src="images/pisa_straight.jpg" class="image fit"/>
+										</div>
+									</div>
+									<div class='row'>
+										<div class="col-12 col-12-small">
+											<figcaption> Image Angle Distribution </figcaption>
+											<img src="images/pisa_theta_dist.jpg" class="image fit"/>
+										</div>
+									</div>
+
+								</center> 
+
+								<p>
+									We can visually confirm that the process is working correctly in most cases. The images do appear to be more straight than they were originally and if we look at the distribution of the angles then we observe the straightened image has more angles aligned with the relevant angles. Some results are questionable like Leaning Tower of Pisa which is tilted in its original state. The most obvious failure is shown below where the algorithm tries to straighten the angular design of a museum.
+
+								</p>
+
+								<center>
+									<code>Museum</code>
+									<div class='row'>
+										<div class="col-6 col-12-small">
+											<figcaption> Original Image </figcaption>
+											<img src="images/museum.jpg" class="image fit"/>
+										</div>
+										<div class="col-6 col-12-small">
+											<figcaption> Straightened Image (-25º)</figcaption>
+											<img src="images/museum_straight.jpg" class="image fit"/>
+										</div>
+									</div>
+									<div class='row'>
+										<div class="col-12 col-12-small">
+											<figcaption> Image Angle Distribution </figcaption>
+											<img src="images/museum_theta_dist.jpg" class="image fit"/>
+										</div>
+									</div>
+
+								</center>
+
+
+								<hr>
+								<h2 id="frequencies">Fun with Frequencies</h2>
+								<h3>1. Image 'Sharpening'</h3>
+								<p>
+									The Guassian filter is a low pass filter that retains only the low frequencies. We can subtract the blurred version from the original image to get the high frequencies of the image. An image often looks sharper if it has stronger high frequencies. That means we can make the image appear sharper by adding these high frequencies back to the original image (left). We can also transform this process into a single convolution operation called the unsharp mask filter (right).
+
+								</p>
+								<center>
+									<figcaption><i>Hover</i> to see the difference :)</figcaption>
+									<div class='row'>
+										<div class="col-2 col-12-small"></div>
+
+										<div class="col-4 col-12-small">
+											<figcaption> Sharpened Image (Sum) </figcaption>
+											<img src="images/taj_sharp_sum.jpg"
+													 onmouseover="this.src='images/taj.jpg'"
+													 onmouseout="this.src='images/taj_sharp_sum.jpg'"
+													 class="image fit"/>
+										</div>
+										<div class="col-4 col-12-small">
+											<figcaption> Sharpened Image (Convolution)</figcaption>
+											<img src="images/taj_sharp_conv.jpg"
+													 onmouseover="this.src='images/taj.jpg'"
+													 onmouseout="this.src='images/taj_sharp_sum.jpg'"
+													 class="image fit"/>
+										</div>
+
+										<div class="col-2 col-12-small"></div>
+
+									</div>
+								</center> <br>
+
+								<p>
+									We can see both the techniques produce sharper looking images and both the sharp images look the same because both the processes are equivalent.
+								</p>
+
+								<center>
+									<div class='row'>
+										<div class="col-4 col-12-small"></div>
+
+										<div class="col-4 col-12-small">
+											<figcaption> Sharpened Image </figcaption>
+											<img src="images/lizard_sharp.jpg"
+													 onmouseover="this.src='images/lizard.jpg'"
+													 onmouseout="this.src='images/lizard_sharp.jpg'"
+													 class="image fit"/>
+										</div>
+										
+										<div class="col-4 col-12-small"></div>
+
+									</div>
+								</center>
+								<br>
+								<p>
+									Just to confirm that this is actually not adding detail to the image let's take a sharp image, blur it & then attempt to sharpen it again and see the results.
+								</p>
+								<p>
+								<center>
+									<div class='row'>
+										<div class="col-4 col-12-small">
+											<figcaption> Original Image </figcaption>
+											<img src="images/portals.jpg" class="image fit"/>
+										</div>
+										<div class="col-4 col-12-small">
+											<figcaption> Blurred Image </figcaption>
+											<img src="images/portals_blurred.jpg" class="image fit"/>
+										</div>
+										<div class="col-4 col-12-small">
+											<figcaption> Sharpened Blurred Image </figcaption>
+											<img src="images/portals_blurred_sharp.jpg" class="image fit"/>
+										</div>
+
+									</div>
+								</center> 
+								</p>
+								<h3>2. Hybrid Images</h3>
+								<p>
+									The goal of here is to create hybrid images using the approach described in the SIGGRAPH 2006 <a href='http://olivalab.mit.edu/publications/OlivaTorralb_Hybrid_Siggraph06.pdf'>paper</a> by Oliva, Torralba, and Schyns. Hybrid images are static images that change in interpretation as a function of the viewing distance. The basic idea is that high frequency tends to dominate perception when it is available, but, at a distance, only the low frequency (smooth) part of the signal can be seen. By blending the high frequency portion of one image with the low-frequency portion of another, you get a hybrid image that leads to different interpretations at different distances.
+
+								</p>
+
+								<center>
+									<code>Nutrek</code>
+									<div class='row'>
+										<div class="col-4 col-12-small">
+											<figcaption> Derek </figcaption>
+											<img src="images/derek.jpg" class="image fit"/>
+										</div>
+										<div class="col-4 col-12-small">
+											<figcaption> Nutmeg</figcaption>
+											<img src="images/cat.jpg" class="image fit"/>
+										</div>
+										<div class="col-4 col-12-small">
+											<figcaption> Hybrid Image </figcaption>
+											<img src="images/nutrek.jpg" class="image fit"/>
+										</div>
+									</div>
+
+									<br>
+									<code>Darth Sahai</code>
+									<div class='row'>
+										<div class="col-4 col-12-small">
+											<figcaption> Sahai </figcaption>
+											<img src="images/sahai.jpg" class="image fit"/>
+										</div>
+										<div class="col-4 col-12-small">
+											<figcaption> Darth Vader</figcaption>
+											<img src="images/vader.jpg" class="image fit"/>
+										</div>
+										<div class="col-4 col-12-small">
+											<figcaption> Hybrid Image </figcaption>
+											<img src="images/darth_sahai.jpg" class="image fit"/>
+										</div>
+									</div>
+
+									<br>
+									<code>Lizard Person</code>
+									<div class='row'>
+										<div class="col-4 col-12-small">
+											<figcaption> Lizard People Leader </figcaption>
+											<img src="images/zuck.jpg" class="image fit"/>
+										</div>
+										<div class="col-4 col-12-small">
+											<figcaption> Lizard</figcaption>
+											<img src="images/lizard.jpg" class="image fit"/>
+										</div>
+										<div class="col-4 col-12-small">
+											<figcaption> Hybrid Image </figcaption>
+											<img src="images/lizardperson.jpg" class="image fit"/>
+										</div>
+
+									</div>
+									<br>
+								</center>
+
+								<p>
+									Let's see the frequency analysis of the last result to see what's going on under the hood.
+								</p>
+
+								<center>
+									<div class='row'>
+										<div class="col-6 col-12-small">
+											<img src="images/zuck_ft.jpg" class="image fit"/>
+										</div>
+										<div class="col-6 col-12-small">
+											<img src="images/lizard_ft.jpg" class="image fit"/>
+										</div>
+
+									</div>
+
+									<div class='row'>
+										<div class="col-6 col-12-small">
+											<img src="images/zuck_filtered_ft.jpg" class="image fit"/>
+										</div>
+										<div class="col-6 col-12-small">
+											<img src="images/lizard_filtered_ft.jpg" class="image fit"/>
+										</div>
+									</div>
+
+									<div class='row'>
+										<div class="col-3 col-12-small"> </div>
+										<div class="col-6 col-12-small">
+											<img src="images/hybrid_ft.jpg" class="image fit"/>
+										</div>
+										<div class="col-3 col-12-small"> </div>
+
+									</div>
+
+								</center>
+
+
+
+								<h3>3. Gaussian and Laplacian Stacks</h3>
+								<div class="image right">
+									<img src="images/auto_contrast/onion_church_fail.jpg"/>
+									<center><figcaption>Contrast Fail</figcaption></center>
+								</div>
+								<p>
+									Gaussian and Laplacian stacks which are kind of like their pyramid counterparts but without the downsampling which means we can <i>stack</i> them up together in a n-dimensional tensor. Gaussian stack compenents are just the result of applying a Gaussian filter varying sigmas to an image, and the Laplacian stack is made up of the differences between two consecutive Gaussian stack levels.
+								</p>
+
+								<center>
+									<code>Lincoln</code>
+									<div class='row'>
+										<div class="col-12 col-12-small">
+											<figcaption> Gaussian Stack </figcaption>
+											<img src="images/lincoln_gstack.jpg" class="image fit"/>
+										</div>
+									</div>
+									<div class='row'>
+										<div class="col-12 col-12-small">
+											<figcaption> Laplacian Stack </figcaption>
+											<img src="images/lincoln_lstack.jpg" class="image fit"/>
+										</div>
+									</div>
+
+									<br>
+									<code>Lizard Person</code>
+									<div class='row'>
+										<div class="col-12 col-12-small">
+											<figcaption> Gaussian Stack </figcaption>
+											<img src="images/lizardperson_gstack.jpg" class="image fit"/>
+										</div>
+									</div>
+									<div class='row'>
+										<div class="col-12 col-12-small">
+											<figcaption> Laplacian Stack </figcaption>
+											<img src="images/lizardperson_lstack.jpg" class="image fit"/>
+										</div>
+									</div>
+								</center>
+								<br>
+
+								<h3>4. Multiresolution Blending</h3>
+								<p>
+									Now we blend two images seamlessly using a multi resolution blending as described in the 1983 paper by Burt and Adelson. An image spline is a smooth seam joining two image together by gently distorting them. Multiresolution blending computes a gentle seam between the two images seperately at each band of image frequencies, resulting in a much smoother seam.
+									<br>
+									Here are some of the results
+								</p>
+
+								<center>
+									<code>Oraple</code>
+									<div class='row'>
+										<div class="col-4 col-12-small">
+											<figcaption> Apple </figcaption>
+											<img src="images/apple.jpeg" class="image fit"/>
+										</div>
+										<div class="col-4 col-12-small">
+											<figcaption> Mask</figcaption>
+											<img src="images/mask_horizontal.png" class="image fit"/>
+										</div>
+										<div class="col-4 col-12-small">
+											<figcaption> Orange </figcaption>
+											<img src="images/orange.jpeg" class="image fit"/>
+										</div>
+									</div>
+									<div class='row'>
+										<div class="col-4 col-12-small"></div>
+										<div class="col-4 col-12-small">
+											<figcaption>Oraple</figcaption>
+											<img src="images/orapple.jpg" class="image fit"/>
+										</div>
+										<div class="col-4 col-12-small"></div>
+									</div>
+									<br>
+
+									<code>Space Birds</code>
+									<div class='row'>
+										<div class="col-4 col-12-small">
+											<figcaption> Sky </figcaption>
+											<img src="images/sky.jpg" class="image fit"/>
+										</div>
+										<div class="col-4 col-12-small">
+											<figcaption> Mask</figcaption>
+											<img src="images/mask_blackhole.jpg" class="image fit"/>
+										</div>
+										<div class="col-4 col-12-small">
+											<figcaption> Black hole </figcaption>
+											<img src="images/blackhole.jpg" class="image fit"/>
+										</div>
+									</div>
+									<div class='row'>
+										<div class="col-4 col-12-small"></div>
+										<div class="col-4 col-12-small">
+											<figcaption>Oraple</figcaption>
+											<img src="images/skyhole.jpg" class="image fit"/>
+										</div>
+										<div class="col-4 col-12-small"></div>
+									</div>
+									<br>
+
+									<code>Orange Man</code>
+									<div class='row'>
+										<div class="col-4 col-12-small">
+											<figcaption> Trump </figcaption>
+											<img src="images/trump.jpg" class="image fit"/>
+										</div>
+										<div class="col-4 col-12-small">
+											<figcaption> Mask</figcaption>
+											<img src="images/mask_trump.jpg" class="image fit"/>
+										</div>
+										<div class="col-4 col-12-small">
+											<figcaption> Orange </figcaption>
+											<img src="images/orange.jpeg" class="image fit"/>
+										</div>
+									</div>
+									<div class='row'>
+										<div class="col-4 col-12-small"></div>
+										<div class="col-4 col-12-small">
+											<figcaption>Orange Man</figcaption>
+											<img src="images/orangeman.jpg" class="image fit"/>
+										</div>
+										<div class="col-4 col-12-small"></div>
+									</div>
+									<br>
+								</center>
+								<p>
+									Let's see what the different stacks look like for our last blending result.
+
+								</p>
+
+								<center>
+									<code>Orange</code>
+									<div class='row'>
+										<div class="col-12 col-12-small">
+											<figcaption> Laplacian Stack </figcaption>
+											<img src="images/orange_lstack.jpg" class="image fit"/>
+										</div>
+									</div>
+
+									<br>
+									<code>Trump</code>
+									<div class='row'>
+										<div class="col-12 col-12-small">
+											<figcaption> Laplacian Stack </figcaption>
+											<img src="images/trump_lstack.jpg" class="image fit"/>
+										</div>
+									</div>
+
+									<br>
+									<code>Mask</code>
+									<div class='row'>
+										<div class="col-12 col-12-small">
+											<figcaption> Laplacian Stack </figcaption>
+											<img src="images/mask_trump_lstack.jpg" class="image fit"/>
+										</div>
+									</div>
+
+									<br>
+									<code>Orange Man</code>
+									<div class='row'>
+										<div class="col-12 col-12-small">
+											<figcaption> Laplacian Stack </figcaption>
+											<img src="images/orangeman_lstack.jpg" class="image fit"/>
+										</div>
+									</div>
+
+
+								</center>
+
+								<hr>
+
+								<p>
+									I had a lot of fun working on this and learned a lot by playing around with image frequencies. Quite cool!
+								</p>
+
+			</div>
+
+		<!-- Scripts -->
+			<script src="assets/js/jquery.min.js"></script>
+			<script src="assets/js/jquery.scrollex.min.js"></script>
+			<script src="assets/js/jquery.scrolly.min.js"></script>
+			<script src="assets/js/browser.min.js"></script>
+			<script src="assets/js/breakpoints.min.js"></script>
+			<script src="assets/js/util.js"></script>
+			<script src="assets/js/main.js"></script>
+
+	</body>
+</html>
