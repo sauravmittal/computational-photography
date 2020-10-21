@@ -1,0 +1,924 @@
+<!DOCTYPE HTML>
+<!--
+	Massively by HTML5 UP
+	html5up.net | @ajlkn
+	Free for personal and commercial use under the CCA 3.0 license (html5up.net/license)
+-->
+<html>
+	<head>
+		<title>Image Morphing</title>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+		<link rel="stylesheet" href="assets/css/main.css" />
+		<noscript><link rel="stylesheet" href="assets/css/noscript.css" /></noscript>
+	</head>
+	<body class="is-preload">
+
+		<!-- Wrapper -->
+			<div id="wrapper">
+
+				<!-- Intro -->
+					<div id="intro">
+						<h1>COMPSCI 194-26: Project 3<br> <br> Image Morphing <br></h1>
+						<p style="background-color: rgba(16, 16, 16, 0.55);
+										  padding: 0.25rem 1rem;
+										  border-color: rgba(16, 16, 16, 0.5);">
+							<b>Saurav Mittal</b> | saurav@berkeley.edu 
+						</p> <br><br>
+					</div>
+				
+ 					<!-- Main -->
+					<div id="main">
+
+						<!-- Featured Post -->
+<!-- 							<article class="post featured">
+								<header class="major">
+								</header>
+								
+							</article>
+ -->
+						<!-- Featured Post -->
+							<article class="post">
+								<header class="major">
+									<h2>Project Report</h2>
+								</header>
+
+<!-- 								<h2>Results Sneak Peak</h2>
+									<a class="image main" style="margin-top: -0.5rem;"><img src="images/compare/workshop.jpg"/></a>
+								<hr>
+ -->
+								<h2>Table of Contents</h2>
+								<div class="row">
+									<div class="col-12 col-12-small">
+										<a href="#introduction"><b>Introduction</b></a>
+										<ol></ol>
+									</div>
+
+								</div>
+								<div class='row'>
+									<div class="col-12 col-12-small">
+
+										<a href="#section1"><b>Image Morphing Setup</b></a>
+										<ol>
+											<li> Defining Correspondences </li>
+											<li> Generating Morph Sequences </li>
+											<li> Different Morphing Functions<sup>*</sup></li>
+										</ol>
+									</div>
+								</div>
+								<div class='row'>
+									<div class="col-12 col-12-small">
+
+										<a href="#section2"><b>Fun with Face Morphing</b></a>
+										<ol>
+											<li> Population Analysis </li>
+											<li>Transforming Image Characteristics<sup>*</sup> </li>
+											<li> Class Face Morph!<sup>*</sup> </li>
+										</ol>
+									</div>
+								</div>
+								<div class='row'>
+									<div class="col-12 col-12-small">
+
+										<a href="#section3"><b>Morphing Applications</b></a>
+										<ol>
+											<li> Making Caricatures </li>
+											<li> Transformations & Transitions<sup>*</sup></li>
+											<li> Music Visualizer<sup>*#</sup></li>
+										</ol>
+									</div>
+								</div>
+
+								<span style='font-size: 0.6em; line-height: 1px;'>
+									* additional bells & whistles<br>
+									# best part!
+								</span>
+								<hr>
+
+								<h2 id='introduction'>Introduction</h2>
+								<p>
+									In this project we'll explore image morphing! A morph is a simultaneous warp of the image shape and a cross-dissolve of the image colors where the warp is controlled by defining a correspondence between two pictures. We'll take a look at different morphing techniques, analyze population face shapes, generate fun caricatures and more.
+
+								</p>
+
+								<hr>
+								<h2 id="section1">Image Morphing Setup</h2>
+								<h3>1. Defining Correspondences</h3>
+								<p>
+									First, we will need to define pairs of corresponding points on the two images by hand (the more points, the better the morph, generally). In order for the morph to work we will need a consistent labeling of the two faces. We will label faces A and B in a consistent manner using the same ordering of keypoints in the two faces. Once we have the points on the two faces, we'll need to provide a triangulation of these points that will be used for morphing. I chose to use the Delaunay triangulation on the average point set of the two images since it does not produce overly skinny triangles.
+									<br> <br>
+									<b>Note: </b>For most of the project, we'll be working with the head shots of two awesome Berkeley EECS Professors, Professor Abbeel & Professor Malik. This is partly for consistency and mostly because manually defining correspondences is tedious and these were the pictures I went with when I started the assignment. You know people who would spend 242695 hours automating a 5 minute job instead of actually doing it? Yeah, I'm those people. I actually tried automating this process and failed so let's not even get into it. Wow we're just gonna enjoy the company of these professors and morph their faces even if it gets weird later (spoiler: it might 😉).
+								</p>
+								<p>
+									<center>
+										<figcaption> Delauney Triangulations </figcaption>
+										<img src="images/ml_triangulation.jpg"/>
+										<br>
+									</center> 
+								</p>
+								<p>
+									For these two images, I manually selected <strike>a shit ton of</strike> 84 points (including 4 corners) in both the images across different facial features and accessories (glasses) to set us up for a good morph. Once I got that, I used <code>scipy</code> library's Delaunay function to compute an abstract triangle representation on the mean point set of the two images which is shown above.
+								</p>
+
+
+								<h3>2. Generating Morph Sequences </h3>
+								<p>
+									Before we compute the whole morph sequence, let's compute the mid-way face of these two images. This involves the following:
+									<ol>
+										<li>Computing the average shape (a.k.a the average of each keypoint location in the two faces)</li>
+										<li>Warping both faces into that shape</li>
+										<li>Averaging the colors together. </li>
+									</ol>
+									The main task in warping the faces into the average shape is implementing an affine warp for each triangle in the triangulation from the original images into this new shape. We iterated through all the triangles pairs and computed an affine transformation matrix between them. We then used this matrix along with some simple interpolation techniques to move the pixels between triangles and implemented an inverse warp of all the pixels.
+								</p>
+								<p>
+									We found the mid-way face for our professors by warping both the faces to their average face shape and then blending both the faces together using equal weights.
+								</p>
+								<p>
+									<center>
+										<div class='row'>
+											<div class="col-4 col-12-small">
+												<figcaption> Pieter Abbeel </figcaption>
+												<img src="images/abbeel.jpg"
+														 class="image fit"/>
+											</div>
+											<div class="col-4 col-12-small">
+												<figcaption> Pieter Malik </figcaption>
+												<img src="images/midway_face.jpg"
+														 class="image fit"/>
+											</div>
+											<div class="col-4 col-12-small">
+												<figcaption> Jitendra Malik</figcaption>
+												<img src="images/malik.jpg"
+														 class="image fit"/>
+											</div>
+										</div>
+									</center> 								
+								</p>
+								<p>
+									Cool! It actually looks pretty realistic. Do note that the difference in quality is purely because I downsampled the images before processing to make the code run faster and to get lighter gif files for later. 
+
+									<br>
+
+									<sub> <span style='font-size: 0.5em; line-height: 5px;'>&lt;mini-rant&gt; Why are gifs so big?? I know there are a lot of images but some quick math seems to show they are bigger than im_size*num_frames. All this overhead??? No wonder all gifs on the web look like trash smh &lt;/mini-rant&gt; </span></sub>
+								</p>	
+
+								<p>
+									<div class='image right'>
+										<img src="images/morph_algorithm.jpg">
+									</div>
+									A 'morph' is just a a sequence of images which starts at an image and ends on another with automatically generated images in the middle which help transition from the first image to the last. We slowly change the shape of the starting image until it reaches the shape of our final image through affine tranformations on the image triangles all while also blending the image colors as well. The image on the right sums up the general algorithm quite well.
+
+								</p>
+								<p>
+									Here is the result of using this algorithm to morph the images of Professor Abbeel & Professor Malik
+								</p>
+
+								<p>
+									<center>
+										<div class='row'>
+
+											<div class="col-4 col-12-small">
+												<figcaption> Pieter Abbeel </figcaption>
+												<img src="images/abbeel.jpg"
+														 class="image fit"/>
+											</div>
+
+											<div class="col-4 col-12-small">
+												<figcaption> Berkeley ML Morph </figcaption>
+												<img src="images/ml_morph.gif"
+														 class="image fit"/>
+											</div>
+
+											<div class="col-4 col-12-small">
+												<figcaption> Jitendra Malik</figcaption>
+												<img src="images/malik.jpg"
+														 class="image fit"/>
+											</div>
+										</div>
+									</center> 								
+								</p>
+
+
+								<h3>3. Different Morphing Functions</h3>
+								<p>
+									We can play around with our base morph implementation a bit. There are two arguments we can tweak with our current algorithm, the warp factor & the morph factor. The warp factor tells the algorithm by how much to change the shape of our triangle in a given frame and the morph factor tells the algorithm how much we want to blend the two images for a frame. To understand this better, let's take a look at what changing one of these factors looks like while keeping the other constant at 1. 
+								</p>
+
+								<p>
+									<center>
+										<div class='row'>
+
+											<div class="col-2 col-12-small">
+											</div>
+
+											<div class="col-4 col-12-small">
+												<figcaption> Fixed Morph Factor = 1 </figcaption>
+												<img src="images/ml_just_warp.gif"
+														 class="image fit"/>
+											</div>
+
+											<div class="col-4 col-12-small">
+												<figcaption> Fixed Warp Factor = 1</figcaption>
+												<img src="images/ml_just_blend.gif"
+														 class="image fit"/>
+											</div>
+
+											<div class="col-2 col-12-small">
+											</div>
+
+										</div>
+									</center> 								
+								</p>
+
+								<p>
+									<div class='image right' style="text-align: center;">
+										<figcaption>Custom Sigmoid Function</figcaption>
+										<img src="images/sigmoid_fn.jpg">
+									</div>
+
+									Both the factors lie in the range [0, 1] and go from zero to one. We have factor calculating functions which map the current frame number to the factor value. In our original implementation, we used a linear map so the images morph steadily & consistently. Intuitively, it made sense to me to speed up the middle frames where we would have weird artifacts from both the images. I tried the sigmoid function as it fit the bill. <br><br>I had to play around with the domain and range of the function and clip it to make it work for our use case. The exact parametric sigmoid function and the plot of our new factor function is shown here. 
+								</p>
+
+								<p>
+									<center>
+										<table style="text-align: center;">
+											<tr>
+												<td> </td>
+												<td class="align-middle" style="vertical-align: middle !important;">Linear Warp</td>
+												<td class="align-middle" style="vertical-align: middle !important;">Sigmoid Warp</td>
+											</tr>
+											<tr>
+												<td class="align-middle" style="vertical-align: middle !important;">Linear Blend</td>
+												<td>
+													<img src="images/ml_morph.gif"
+															 class="image large"/>
+												</td>
+												<td>
+													<img src="images/ml_sigmoid_warp.gif"
+															 class="image large"/>
+												</td>
+											</tr>
+											<tr>
+												<td class="align-middle" style="vertical-align: middle !important;">Sigmoid Blend</td>
+												<td>
+													<img src="images/ml_sigmoid_blend.gif"
+															 class="image large"/>
+												</td>
+												<td>
+													<img src="images/ml_sigmoid_both.gif"
+															 class="image large"/>
+												</td>
+
+											</tr>
+										</table>
+									</center>
+								</p>
+
+								<p>
+									Comparing the different results, I don't think there's a clear winner here. It's really up to what you prefer. For this pair of images I think the Linear Blend + Linear Warp works quite well because the overall morph is fairly smooth so we get to see neat middle frames for longer. For other images where the transition isn't as smooth the linear map would likely be percieved worse than the sigmoid map because we would be spend a lot of time on frames which are not pleasing to look at. I annotated another set of pictures to showcase just this.
+								</p>
+								<p>
+									<center>
+										<figcaption> Delauney Triangulations </figcaption>
+										<img src="images/ballrav_triangulation.jpg"/>
+										<br>
+									</center> 
+								</p>
+								<p>
+									<center>
+										<figcaption>BALJEET x Saurav: <i>BALLrav</i> Morph </figcaption>
+										<div class='row'>
+											<div class="col-2 col-12-small"></div>
+
+											<div class="col-4 col-12-small">
+												<figcaption> Linear Map </figcaption>
+												<img src="images/BALLrav_linear.gif"
+														 class="image fit"/>
+											</div>
+											<div class="col-4 col-12-small">
+												<figcaption> Sigmoid Map</figcaption>
+												<img src="images/BALLrav.gif"
+														 class="image fit"/>
+											</div>
+
+											<div class="col-2 col-12-small"></div>
+
+										</div>
+									</center>
+								</p>
+
+								<p>
+									This morph isn't nearly as clean as the previous ones because the images are quite different from each other both in color and structure. The sigmoid morph looks better than the linear morph because it speeds through through the displeasing frames quicker. 
+								</p>
+
+
+								<p>
+									I tried playing around with some other functions as well but they didn't really provide better results. A fun thing that I did try here was modeling the morph after a <i>random walk</i>. 
+								</p>
+								<p>
+									<center>
+										<figcaption>Random Morphing</figcaption>
+										<br>
+										<div class='row'>
+											<div class="col-8 col-12-small">
+												<img src="images/ml_random_walk_start_path.jpg"
+														 class="image fit"/>
+											</div>
+											<div class="col-4 col-12-small">
+												<img src="images/ml_random_walk_start.gif"
+														 class="image fit"/>
+											</div>
+										</div>
+										<br>
+										<div class='row'>
+											<div class="col-4 col-12-small">
+												<img src="images/ml_random_walk_mid.gif"
+														 class="image fit"/>
+											</div>
+
+											<div class="col-8 col-12-small">
+												<img src="images/ml_random_walk_mid_path.jpg"
+														 class="image fit"/>
+											</div>
+										</div>
+
+									</center>
+								</p>
+
+								<p>
+									Why do this? No reason really, just seemed cool. Implementing the random morphs did give me a fun idea that I ended up working on a lot later so it was definitely worth :)
+								</p>
+
+
+								<hr>
+								<h2 id="section2">Fun with Face Morphing</h2>
+								<h3>1. Population Analysis</h3>
+								<p>
+									I analyzed a free data set of Danish faces meant for statistical models of shape available <a href="http://www2.imm.dtu.dk/~aam/datasets/datasets.html">here</a> for population facial feature analysis. We have 40 people in this dataset, we can start by finding the average face of this population. Computing the average face first finding the average face shape of the population, transforming all the faces into the average shape and then blending all the transformed faces together with equal weights.
+
+								</p>
+								<p>
+									<center>
+										<figcaption><i>Hover</i> to see the difference :)</figcaption>
+										<div class='row'>
+											<div class="col-12">
+												<figcaption> All Danes' Faces Transformed </figcaption>
+												<img src="images/all_danes_transformed.jpg"
+														 onmouseover="this.src='images/all_danes.jpg'"
+														 onmouseout="this.src='images/all_danes_transformed.jpg'"
+														 class="image fit"/>
+											</div>
+										</div>
+									</center>
+								</p>
+
+								<p>
+									<center>
+										<div class='row'>
+											<div class="col-4 col-12-small">
+												<figcaption> Average Dane's Face </figcaption>
+												<img src="images/mean_dane_face.jpg"
+														 class="image fit"/>
+											</div>
+
+											<div class="col-4 col-12-small">
+												<figcaption> My Face Warped into Avg. Dane's  </figcaption>
+												<img src="images/saurav_as_dane.jpg"
+														 class="image fit"/>
+											</div>
+
+											<div class="col-4 col-12-small">
+												<figcaption> Avg. Dane's Face Warped into mine</figcaption>
+												<img src="images/avg_dane_as_saurav.jpg"
+														 class="image fit"/>
+											</div>
+
+										</div>
+									</center>
+								</p>
+
+								<h3>2. Transforming Image Characteristics</h3>
+								<p>
+									Now I'll try to change some characteristics of my face using the features from the Danes dataset.
+								</p> 
+
+								<p>
+									<center>
+										<figcaption>Changing Ethinicity</figcaption>
+										<div class='row'>
+											<div class="col-4 col-12-small">
+												<figcaption> Warp Only </figcaption>
+												<img src="images/saurav_dane_warp.gif"
+														 class="image fit"/>
+											</div>
+
+											<div class="col-4 col-12-small">
+												<figcaption> Blend Only  </figcaption>
+												<img src="images/saurav_dane_blend.gif"
+														 class="image fit"/>
+											</div>
+
+											<div class="col-4 col-12-small">
+												<figcaption> Complete Morph</figcaption>
+												<img src="images/saurav_dane_both.gif"
+														 class="image fit"/>
+											</div>
+
+										</div>
+									</center>
+								</p>
+
+								<p>
+									<center>
+										<figcaption>Adding Smile (+ Ethnicity)</figcaption>
+										<div class='row'>
+											<div class="col-4 col-12-small">
+												<figcaption> Warp Only </figcaption>
+												<img src="images/saurav_smiling_warp.gif"
+														 class="image fit"/>
+											</div>
+
+											<div class="col-4 col-12-small">
+												<figcaption> Blend Only  </figcaption>
+												<img src="images/saurav_smiling_blend.gif"
+														 class="image fit"/>
+											</div>
+
+											<div class="col-4 col-12-small">
+												<figcaption> Complete Morph</figcaption>
+												<img src="images/saurav_smiling_both.gif"
+														 class="image fit"/>
+											</div>
+
+										</div>
+									</center>
+								</p>
+
+
+
+								<h3>3. Class Face Morph!</h3>
+								<p>
+									We got 15 students from the class in our class morph video! My friend Rina morphed her face to mine and I morphed my face to Amy's. 
+								</p>
+								<p>
+									<center>
+										<div class='row'>
+
+											<div class="col-2 col-12-small">
+											</div>
+
+											<div class="col-8 col-12-small">
+												<figcaption> Delaunay Triangulation </figcaption>
+												<img src="images/class_video_triangulation.jpg"
+														 class="image fit"/>
+											</div>
+
+											<div class="col-2 col-12-small">
+											</div>
+
+										</div>
+									</center>
+								</p>
+
+								<p>
+									<center>
+										<div class='row'>
+
+											<div class="col-2 col-12-small">
+											</div>
+
+											<div class="col-4 col-12-small">
+												<figcaption>Rina to Saurav </figcaption>
+												<img src="images/rina-to-saurav.gif"
+														 class="image fit"/>
+											</div>
+											<div class="col-4 col-12-small">
+												<figcaption>Saurav to Amy</figcaption>
+												<img src="images/saurav-to-amy.gif"
+														 class="image fit"/>
+											</div>
+
+
+											<div class="col-2 col-12-small">
+											</div>
+
+										</div>
+									</center> 								
+								</p>
+
+								<p>
+									<center>
+										<iframe width="60%" height="420px" src="https://www.youtube.com/embed/cDOiJji8E4I?controls=0" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe>	
+									</center>						
+								</p>
+								<p>
+									List of students in order of appearance: Ritika Shrivastava, Megan Lee, Rina Lu, Saurav Mittal, Amy Hung, Cesar Plascencia Zuniga, Ron, Danji Liu, Saurav Shroff, Gurmehar Kaur, Avik Sethia, Devesh Agarwal, Yash Swarup Agarwal, Hannah Moore, and Matt Hallac.
+								</p>
+
+
+								<hr>
+								<h2 id="section3">Morphing Applications</h2>
+								<h3>1. Making Caricatures</h3>
+								<p>
+									Now we make caricatures of my face by extrapolating from the population mean that we calculated in the last section. We do this by finding the difference between the average face features & my face features and then adding it back to my face after scaling it.
+
+								</p>
+								<p>
+									<center>
+										<div class='row'>
+											<div class="col-12">
+												<figcaption> Caricatures </figcaption>
+												<img src="images/caricatures.jpg"
+														 class="image fit"/>
+											</div>
+										</div>
+									</center>
+								</p>
+								<p>
+									We see that the caricatures become more 'extreme' the further alpha deviates from 1 (which would yield the original image).
+								</p>
+
+								<h3>2. Transformations & Transitions</h3>
+								<h4>Transformations</h4>
+								<p>
+									<center>
+										<div class='row'>
+											<div class="col-4">
+											</div>
+
+											<div class="col-4">
+												<img src="images/daisy_triangulation.jpg"
+														 class="image fit"/>
+											</div>
+											<div class="col-4">
+											</div>
+
+
+										</div>
+									</center>
+								</p>
+
+
+								<p>
+									I wanted to see if it was possible to implement transformations using our morphing algorithm. For this, we have a new test subject – a pretty, symmetrical daisy :) As we aren't really morphing to any particular image for transformations, I used my warp-only morph which fixes the morph factor to 1. Here are some of the transformations I implemented.
+								</p>
+
+								<p>
+									<center>
+										<div class='row'>
+											<div class="col-2">
+
+											</div>
+
+											<div class="col-4">
+												<figcaption>Rotate Left</figcaption>
+												<img src="images/daisy_rotate_left.gif"
+														 class="image fit"/>
+											</div>
+
+											<div class="col-4">
+												<figcaption>Rotate Right</figcaption>
+												<img src="images/daisy_rotate_right.gif"
+														 class="image fit"/>
+											</div>
+
+											<div class="col-2">
+											</div>
+
+										</div>
+
+										<div class='row'>
+											<div class="col-4">
+												<figcaption>3D Inward Rotate</figcaption>
+												<img src="images/daisy_inward_rotate.gif"
+														 class="image fit"/>
+											</div>
+
+											<div class="col-4">
+												<figcaption>Scale</figcaption>
+												<img src="images/daisy_linear_scale.gif"
+														 class="image fit"/>
+											</div>
+
+											<div class="col-4">
+												<figcaption>Curl Up</figcaption>
+												<img src="images/daisy_curl_up.gif"
+														 class="image fit"/>
+											</div>
+
+										</div>
+
+										<div class='row'>
+											<div class="col-4">
+
+											</div>
+
+											<div class="col-4">
+												<figcaption>Petal Fold</figcaption>
+												<img src="images/daisy_petal_fold.gif"
+														 class="image fit"/>
+											</div>
+											<div class="col-4">
+											</div>
+
+										</div>
+
+									</center>
+								</p>
+
+								<p>
+									All the transformations shown just use a single labeled pointset on the daisy (shown above). We generate our final point set (end state) through clever alterations of the original point set which lead to the desired effect. When the points move from their original location to their final location it appears as the image is being transformed.
+								</p>
+
+
+								<h4>Transitions</h4>
+
+								<p>
+									The goal here was to see if would be possible to implement Powerpoint-like slide transitions using our morphing algorithm. The process to generate transitions is pretty similar to what we did for transformations, but instead of doing a warp-only morph we now blend the images as well. I found best results with using a Linear Warp with Sigmoid Blend. This makes sense because the quick blend reduces the weird choppy middle frames (slides are likely different from each other) and the linear warp gives us a smooth structural transition from start to finish. Here are the test slides I used along with some transitions I tried out.
+								</p>
+
+								<p>
+									<center>
+
+
+										<div class='row'>
+
+											<div class="col-1">
+
+											</div>
+
+											<div class="col-5">
+											<figcaption>Slide 1</figcaption>
+
+												<img src="images/slide1.jpg"
+														 class="image fit"/>
+											</div>
+
+											<div class="col-5">
+											<figcaption>Slide 2</figcaption>												
+												<img src="images/slide2.jpg"
+														 class="image fit"/>
+											</div>
+
+											<div class="col-1">
+											</div>
+
+										</div>
+
+										<br> <br>
+										<div class='row'>
+											<div class="col-4">
+												<figcaption>Horizontal Flip</figcaption>
+												<img src="images/slide_hflip.gif"
+														 class="image fit"/>
+											</div>
+
+
+											<div class="col-4">
+												<figcaption>Vertical Flip</figcaption>
+												<img src="images/slide_vflip.gif"
+														 class="image fit"/>
+											</div>
+
+											<div class="col-4">
+												<figcaption>Pop In/Out</figcaption>
+												<img src="images/slide_pop.gif"
+														 class="image fit"/>
+											</div>
+
+										</div>
+
+
+
+										<div class='row'>
+											<div class="col-2">
+
+											</div>
+
+											<div class="col-8">
+												<figcaption>Triangle Dust (My Favorite!)</figcaption>
+												<img src="images/slide_random.gif"
+														 class="image fit"/>
+											</div>
+											<div class="col-2">
+											</div>
+
+										</div>
+
+									</center>
+								</p>
+								<p>
+									The first row of transitions just used the corners of the images for the transition sequences. 'Triangle Dust', on the other hand, has this very interesting effect as it used the Delaunay Triangulation on 256 randomly chosen points on both the images.
+								</p>
+
+
+								<h3>3. Music Visualizer</h3>
+								<p>
+									Now on to my favorite part of the project! I wanted to do something a bit different, something that just doesn't morph from Image A to Image B as I have already explored different morph functions which did that. The face morphs modeled by bounded random walks were quite interesting. I thought about adding more structure to them to give them some purpose. As you have already seen by the section title, I decided to control the face morph by syncing it with some music. This proved to be quite challenging purely because I essentially have no experience with signal processing. I have only really worked with signals in the undergrad EE courses at Berkeley, and if you know me you know I didn't do too hot there :)
+								</p>
+								<p>
+									I picked a music clip with different elements so it's interesting to analyze. Let's start by seeing the clip's waveform and its distribution of frequencies (using Fourier transform).
+								</p>
+
+								<p>
+									<center>
+										<figcaption>Sample Audio Clip</figcaption>
+										<audio controls>
+										  	<source src="media/dance.mp3" type="audio/mpeg">
+										Your browser does not support the audio element.
+										</audio>
+									</center>
+								</p>
+								<p>
+									<center>
+
+
+										<div class='row'>
+
+											<div class="col-6">
+											<figcaption>Time Domain</figcaption>
+												<img src="images/waveform.jpg"
+														 class="image fit"/>
+											</div>
+
+											<div class="col-6">
+											<figcaption>Frequency Domain</figcaption>												
+												<img src="images/waveform_ft.jpg"
+														 class="image fit"/>
+											</div>
+
+										</div>
+
+									</center>
+								</p>
+
+								<p>
+									It's hard to figure out what's what just from these images but if we take a look at the Fourier transform of shorter second-long clips we start to get an idea about what frequencies correspond to what sounds in the audio clip.
+								</p>
+								<p>
+									I implemented a bandpass filter to separate out all the frequencies so that they can be used separately to individually control different aspects of the morph sequence. 
+								</p>
+								<p>
+									<center>
+
+
+										<div class='row'>
+
+											<div class="col-12">
+											<figcaption>Signal Components</figcaption>												
+												<img src="images/signal_components.jpg"
+														 class="image fit"/>
+											</div>
+
+										</div>
+
+									</center>
+								</p>
+
+								<p>
+									Now that we have the dials, we need to figure out what we want to tweak. Just to keep things simple for now, I decided to work with a smoothened signal (signal convolved with a 1D Gaussian filter) instead of working with all the components at the same time. I wanted to use the signal to control what frame of the A->B morph we're on. This is why it was important to smoothen the signal as without it consecutive frames of the morph could be quite different from each other due to high frequencies which would lead to jerky transitions. This is what the morph looked like using the smooth waveform synced to Boney M's Daddy Cool<sup>*</sup><br>
+								<sub> <span style='font-size: 0.5em; line-height: 5px;'>* i said bet, had to do it; warned you it might get weird</span></sub>
+
+								</p>
+
+
+								<p>
+									<center>
+										<iframe width="35%" height='400px' src="https://www.youtube.com/embed/WuDBun2NnFo?controls=0" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe>	
+									</center>						
+								</p>
+
+								<p>
+									This doesn't look great. This was expected because it's only really keeping track of the soundwave amplitudes while ignoring the individual elements we actually percieve while listening to the music. I started thinking about all the ways I could improve on this, distort the faces through the frames into caricatures using the bass, have the high frequencies change the image hue while mids control the flow of the morph and trebble controls the rotation. All this sounds good but doesn't work. I implement a part of this and realized that it looked quite forced and wasn't as seemless as I was hoping/expecting it would be. Just because I had all these knobs for a face morph doesn't mean using them would make the result more pleasing. It was time to pivot.
+								</p>
+								<p>
+									I quickly realized I had been constraining the idea by sticking to the face morphs when I could do so much more with the audio signal. I set out to implement a <u>music visualizer</u>, kinda like the ones that pop up in some Youtube videos. We want our final results to look something like this. 
+								</p>
+								<p>
+									<center>
+
+
+										<div class='row'>
+											<div class="col-3">
+											</div>
+
+
+											<div class="col-6">
+											<figcaption>Sample Audio Visualization</figcaption>												
+												<img src="images/music_spectrum.jpg"
+														 class="image fit"/>
+											</div>
+											<div class="col-3">
+											</div>
+
+
+										</div>
+
+									</center>
+								</p>
+
+								<p>
+									Now, we'll be working with all the frequencies of the signal instead of just the ones filtered out by our bandpass filters. We want to visualize how the frequencies of the audio clip change over time (spectrogram-like visualization). The visualization needs to show all the frequencies at each time step & smoothly transition between the frames. On top of that, I wanted the visualization to pulsate with the bass. First, we need to isolate the bass using a binary signal which encodes the locations of the bass. Implementing this bass detector took a lot of trial and error, but I finally got something that works. I looked at the fourier transforms of second-long clips and found out that the loud thumps in the clip belong to the frequency range ~10-60Hz. I used my bandpass filter to attentuate all other frequencies and then applied a threshold to the absolute value of the filtered signal. This gave me decent results but it still looked choppy so I convolved this with a box filter and then clipped the results to get nice smooth beat detections (shown below).
+								</p>
+								<p>
+									<center>
+
+
+										<div class='row'>
+											<div class="col-1">
+											</div>
+
+
+											<div class="col-10">
+											<figcaption>Beat Detection</figcaption>												
+												<img src="images/signal_beats.jpg"
+														 class="image fit"/>
+											</div>
+											<div class="col-1">
+											</div>
+
+
+										</div>
+
+									</center>
+								</p>
+
+								<p>
+									If you actually compare the postive regions to the audio clip above, you'll see this does a great job of picking the really loud thumps while ignoring other loud frequencies (Ex. 7-8s). 
+								</p>
+								<p>
+									I found images for the base art and annotated them using automatically computer points along a circle. Each point along the circumference of the circle corresponds to a frequency and we scale the point according to the frequency's intensity at a given time step. Integrate this code with our image morphing code, throw in the beat detector and we have all the components for our visualizer. Time to see some results! 
+								</p>
+
+
+								<p>
+									<center>
+
+
+										<div class='row'>
+
+											<div class="col-6">
+											<figcaption>Watermelon Sugar</figcaption>
+												<video width="80%" controls>
+												  <source src="media/watermelon_sugar_watermelon_sugar.mp4" type="video/mp4">
+												Your browser does not support the video tag.
+												</video>
+											</div>
+
+											<div class="col-6">
+											<figcaption>Sunflower</figcaption>												
+												<video width="80%" controls>
+												  <source src="media/sun_sunflower.mp4" type="video/mp4">
+												Your browser does not support the video tag.
+												</video>
+											</div>
+
+										</div>
+
+										<div class='row'>
+
+											<div class="col-6">
+											<figcaption>Instrumental - Blue Danube</figcaption>
+												<video width="80%" controls>
+												  <source src="media/note_blue_danube.mp4" type="video/mp4">
+												Your browser does not support the video tag.
+												</video>
+											</div>
+
+											<div class="col-6">
+											<figcaption>Rick (Best one!)</figcaption>												
+												<video width="80%" controls>
+												  <source src="media/rick_rickroll.mp4" type="video/mp4">
+												Your browser does not support the video tag.
+												</video>
+											</div>
+
+										</div>
+
+									</center>
+								</p>
+
+								<p>
+									This took a hot second to implement & run so I think I'm going to stop here. There's still a lot that can be played around with. Things from changing color / transforming image shape based on certain frequency ranges to tracking the frequencies on a log scale to make the visualization more interpretable. I'll leave that to others to explore!
+								</p>
+
+								<hr>
+								<h4>Final Takeaway</h4>
+								<p>
+									This project was genuinely super fun! I went in thinking that I'll just learn a bit about affine transformations but in an unexpected turn of events I ended up learning more singal processing than I did in EE16A & EE16B (time to take EE120 now??). The end results were ~perfectly splendid~ so I am quite happy :) 
+								</p>
+
+			</div>
+
+		<!-- Scripts -->
+			<script src="assets/js/jquery.min.js"></script>
+			<script src="assets/js/jquery.scrollex.min.js"></script>
+			<script src="assets/js/jquery.scrolly.min.js"></script>
+			<script src="assets/js/browser.min.js"></script>
+			<script src="assets/js/breakpoints.min.js"></script>
+			<script src="assets/js/util.js"></script>
+			<script src="assets/js/main.js"></script>
+
+	</body>
+</html>
