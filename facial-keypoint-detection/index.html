@@ -1,12 +1,829 @@
-<!DOCTYPE html>
+<!DOCTYPE HTML>
+<!--
+	Massively by HTML5 UP
+	html5up.net | @ajlkn
+	Free for personal and commercial use under the CCA 3.0 license (html5up.net/license)
+-->
 <html>
-<head>
-	<title>Redirecting...</title>
-</head>
-<script type="text/javascript">
-	window.location.replace('https://sauravmittal.github.io/computational-photography/image-morphing/');
-</script>
-<body>
+	<head>
+		<title>Facial Keypoint Detection</title>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+		<link rel="stylesheet" href="assets/css/main.css" />
+		<noscript><link rel="stylesheet" href="assets/css/noscript.css" /></noscript>
 
-</body>
+		<!-- Global site tag (gtag.js) - Google Analytics -->
+		<script async src="https://www.googletagmanager.com/gtag/js?id=UA-180905576-1"></script>
+		<script>
+		  window.dataLayer = window.dataLayer || [];
+		  function gtag(){dataLayer.push(arguments);}
+		  gtag('js', new Date());
+
+		  gtag('config', 'UA-180905576-1');
+		</script>
+
+	</head>
+	<body class="is-preload">
+
+		<!-- Wrapper -->
+			<div id="wrapper">
+
+				<!-- Intro -->
+					<div id="intro">
+						<h1>COMPSCI 194-26: Project 4<br> <br> Facial Keypoint Detection <br></h1>
+						<p style="background-color: rgba(16, 16, 16, 0.55);
+										  padding: 0.25rem 1rem;
+										  border-color: rgba(16, 16, 16, 0.5);">
+							<b>Saurav Mittal</b> | saurav@berkeley.edu 
+						</p> <br><br>
+					</div>
+				
+ 					<!-- Main -->
+					<div id="main">
+
+						<!-- Featured Post -->
+<!-- 							<article class="post featured">
+								<header class="major">
+								</header>
+								
+							</article>
+ -->
+						<!-- Featured Post -->
+							<article class="post">
+								<header class="major">
+									<h2>Project Report</h2>
+								</header>
+
+<!-- 								<h2>Results Sneak Peak</h2>
+									<a class="image main" style="margin-top: -0.5rem;"><img src="images/compare/workshop.jpg"/></a>
+								<hr>
+ -->
+								<h2>Table of Contents</h2>
+								<div class="row">
+									<div class="col-12 col-12-small">
+										<a href="#introduction"><b>Introduction</b></a>
+										<ol></ol>
+									</div>
+
+								</div>
+								<div class='row'>
+									<div class="col-12 col-12-small">
+										<a href="#section1"><b>IMM Face Database</b></a>
+										<ol>
+											<li> Nose Tip Detection </li>
+											<li> Full Facial Keypoints Detection </li>
+										</ol>
+									</div>
+								</div>
+
+								<div class='row'>
+									<div class="col-12 col-12-small">
+										<a href="#section2"><b> iBUG's Faces In-the-Wild Dataset</b></a>
+										<ol>
+											<li> Data Preprocessing </li>
+											<li> ResNet-18 Model </li>
+											<li> Results </li>
+											<li> Shift-Invariant ResNet-18 Model <sup>*</sup></li>
+										</ol>
+									</div>
+								</div>
+<!-- 								<div class='row'>
+									<div class="col-12 col-12-small">
+
+										<a href="#section3"><b>Morphing Applications</b></a>
+										<ol>
+											<li> Making Caricatures </li>
+											<li> Transformations & Transitions<sup>*</sup></li>
+											<li> Music Visualizer<sup>*#</sup></li>
+										</ol>
+									</div>
+								</div>
+ -->
+
+ 								<span style='font-size: 0.6em; line-height: 1px;'>
+									* bells & whistles
+								</span>
+
+								<hr>
+
+								<h2 id='introduction'>Introduction</h2>
+								<p>
+									In this project we'll explore automatic facial keypoint detection! We will use deep convolutional neural networks to automatically detect facial keypoints to get rid of all the annoying clicking we had to deal with in the last project on image morphing! Let's start by studying <strike>fake news</strike> CNN.
+								</p>
+								<h3>Convolutional Neural Networks</h3>
+								<p>
+									Convolutional Neural Networks are very similar to ordinary Neural Networks they are made up of neurons that have learnable weights and biases. Each neuron receives some inputs, performs a dot product and optionally follows it with a non-linearity. The whole network still expresses a single differentiable score function: from the raw image pixels on one end to class/regression scores scores at the other. And they still have a loss function (e.g. MSE) on the last (fully-connected) layer that is used to 'train' the network through backpropogation (I'll spare you from the ugly multivariable vector calculus here.) <br>
+
+									ConvNet architectures make the explicit assumption that the inputs are images, which allows us to encode certain properties (Ex. spatial relationships) into the architecture. These then make the forward function more efficient to implement and vastly reduce the amount of parameters in the network. <sup>1.</sup>
+								</p>
+
+								<p>
+									<center>
+										<div class='row'>
+											<div class="col-12">
+
+												<figcaption> Convolutional Neural Network Architecture </figcaption>
+												<img src="images/sample_cnn.png"
+													 class="image fit" />
+												<br>
+											</div>
+										</div>
+									</center> 
+								</p>
+
+								<span style='font-size: 0.6em; line-height: 1px;'>
+									1. <a href='https://cs231n.github.io/convolutional-networks/'>Stanford's CS231n</a>
+								</span>
+
+								<hr>
+								<h2 id="section1">IMM Face Database</h2>
+								<p>
+									For this part, we will use the <a href='http://www2.imm.dtu.dk/~aam/datasets/datasets.html'> IMM Face Database </a> for training our initial toy models. The dataset has 240 facial images of 40 persons and each person has 6 facial images in different viewpoints. All images are annotated with 58 facial keypoints. We will all 6 images of the first 32 persons (index 1-32) as the training set (total 32 x 6 = 192 images) and the images of the remaining 8 persons (index 33-40) (8 * 6 = 48 images) as the validation set.
+								</p>
+								<h3>1. Nose Tip Detection</h3>
+								<h4> Data Preprocessing </h4>
+								<p>
+									We will cast the nose detection problem as a pixel coordinate regression problem, where the input is a single grayscale image, and the outputs are the nose tip positions (x, y). The position (x, y) will be represented as the ratio of image width and height, ranging from 0 to 1. We first convert the image into grayscale and convert image pixel values in uint8 from 0 to 255, to normalized float values in range -0.5 to 0.5 <code>image.astype(np.float32) / 255 - 0.5</code>. After that, we resize the image into smaller size, 80x60. That's all the data preprocessing we do for nose tip detection on the IMM Dataset.
+								</p>
+								<p>
+									<center>
+										<figcaption> Sample Processed Images </figcaption>
+										<div class='row'>
+											<div class="col-1 col-12-small">
+											</div>
+
+											<div class="col-5 col-12-small">
+												<img src="images/nosetip_im1.jpg" class="image fit"/>
+											</div>
+
+											<div class="col-5 col-12-small">
+												<img src="images/nosetip_im2.jpg" class="image fit"/>
+											</div>
+
+											<div class="col-1 col-12-small">
+											</div>
+										</div>
+									</center> 
+								</p>
+
+								<h4> The Model </h4>
+								<p>
+									For the convnet, I played around with some hyperparameters and settled with a network with 3 convolutional layers, 2 max-pool layers, and 2 fully connected layers. I used mean squared error loss as the prediction loss and trained the network using the Adam optimizer with a learning rate found using hyperparameter optimization. Here's the exact CNN architecture I worked with for nose tip detection. 
+								</p>
+								<p>
+									<center>
+										<div class='row table-wrapper'>
+											<div class="col-2 col-12-small">
+											</div>
+
+											<div class="col-8 col-12-small">
+												<figcaption> <b> Model Architecture </b> </figcaption> 
+												<br>
+												<table border="1" class="dataframe">
+												  <thead>
+												    <tr style="text-align: right;">
+												      <th></th>
+												      <th>Layer</th>
+												      <th>Input Shape</th>
+												      <th>Parameters</th>
+												      <th>Total Parameters</th>
+												    </tr>
+												  </thead>
+												  <tbody>
+												    <tr>
+												      <th>1</th>
+												      <td>Conv2d-1</td>
+												      <td>[1, 1, 80, 60]</td>
+												      <td>312</td>
+												      <td>312</td>
+												    </tr>
+												    <tr>
+												      <th>2</th>
+												      <td>ReLU-2</td>
+												      <td>[1, 12, 76, 56]</td>
+												      <td>0</td>
+												      <td>0</td>
+												    </tr>
+												    <tr>
+												      <th>3</th>
+												      <td>Conv2d-3</td>
+												      <td>[1, 12, 76, 56]</td>
+												      <td>4816</td>
+												      <td>4816</td>
+												    </tr>
+												    <tr>
+												      <th>4</th>
+												      <td>ReLU-4</td>
+												      <td>[1, 16, 72, 52]</td>
+												      <td>0</td>
+												      <td>0</td>
+												    </tr>
+												    <tr>
+												      <th>5</th>
+												      <td>MaxPool2d-5</td>
+												      <td>[1, 16, 72, 52]</td>
+												      <td>0</td>
+												      <td>0</td>
+												    </tr>
+												    <tr>
+												      <th>6</th>
+												      <td>Conv2d-6</td>
+												      <td>[1, 16, 36, 26]</td>
+												      <td>2320</td>
+												      <td>2320</td>
+												    </tr>
+												    <tr>
+												      <th>7</th>
+												      <td>ReLU-7</td>
+												      <td>[1, 16, 34, 24]</td>
+												      <td>0</td>
+												      <td>0</td>
+												    </tr>
+												    <tr>
+												      <th>8</th>
+												      <td>MaxPool2d-8</td>
+												      <td>[1, 16, 34, 24]</td>
+												      <td>0</td>
+												      <td>0</td>
+												    </tr>
+												    <tr>
+												      <th>9</th>
+												      <td>Linear-9</td>
+												      <td>[1, 3264]</td>
+												      <td>653000</td>
+												      <td>653000</td>
+												    </tr>
+												    <tr>
+												      <th>10</th>
+												      <td>ReLU-10</td>
+												      <td>[1, 200]</td>
+												      <td>0</td>
+												      <td>0</td>
+												    </tr>
+												    <tr>
+												      <th>11</th>
+												      <td>Linear-11</td>
+												      <td>[1, 200]</td>
+												      <td>402</td>
+												      <td>402</td>
+												    </tr>
+												  </tbody>
+												</table>
+											</div>
+
+											<div class="col-2 col-12-small">
+											</div>
+										</div>
+									</center> 
+								</p>
+
+
+								<p>
+									I used a random search over logarithmic scale [0.0001, 0.01) to find a suitable learning rate. I then trained model for 25 epochs using a fixed random seed with each learning rate. I found that learning rates ~1e-3 gave the best results and that running for more epochs led to overfitting for my model architecture. 
+								</p>	
+
+								<p>
+									<center>
+										<div class='row'>
+											<div class="col-12">
+												<img src="images/random_search.jpg"
+													 class="image fit" />
+											</div>
+										</div>
+									</center> 
+								</p>
+
+								<p>
+									Now, I trained the network for 30 epochs using the best learning rate from above.
+								</p>
+
+								<p>
+									<center>
+										<div class='row'>
+											<div class="col-12">
+												<img src="images/nosenet_loss.jpg"
+													 class="image fit" />
+											</div>
+										</div>
+									</center> 
+								</p>
+								<p>
+									Time to run the network on the validation set and see the results!
+								</p>
+								<p>
+									<center>
+										<div class='row'>
+											<div class="col-12">
+
+												<figcaption> CNN Predictions </figcaption>
+												<img src="images/part1_predictions.jpg"
+													 class="image fit" />
+											</div>
+										</div>
+									</center> 
+								</p>
+
+								<p>
+									Just eyeballing the results, it looks like the model performs fairly well on most pictures! It seems to perform the worst on pictures of a bald man facing at an angle. One possible explanation for this performance is that the training set didn't include similar pictures so the model never learned how to accurately predict this. The dataset is imbalanced as well as most of the pictures are people facing the front which can cause the model to perform poorly on images of people with their heads turned. 
+								</p>
+								<p>
+									Tl;dr I blame the dataset, not the model. model good.
+								</p>
+
+								<h3>2. Full Facial Keypoints Detection</h3>
+								<h4> Data Preprocessing </h4>
+								<p>
+									For full facial keypoint detection, we'll build on top of the preprocessing pipeline we had for nose-tip detection and increase image input size to (240, 180). Since it is a small dataset, we will need data augmentation to prevent the trained model from overfitting. I increased the size of the training set to 3x the original size through data augmentation. I randomly picked 3-5 data augmentors (from Random Horizontal Flip, Random Rotation, Brightness/Contrast Jitter, Random Shift, and Random Noise) twice and then applied them to all the images in the dataset increasing the size of the training set and improving the robustness of the model. 
+								</p>
+
+								<p>
+									<center>
+										<figcaption> Sample Processed Images </figcaption>
+										<div class='row'>
+											<div class="col-4 col-12-small">
+												<img src="images/imm_facial_im1.png" class="image fit"/>
+											</div>
+											<div class="col-4 col-12-small">
+												<img src="images/imm_facial_im2.png" class="image fit"/>
+											</div>
+											<div class="col-4 col-12-small">
+												<img src="images/imm_facial_im3.png" class="image fit"/>
+											</div>
+										</div>
+										<div class='row'>
+											<div class="col-4 col-12-small">
+												<img src="images/imm_facial_im4.png" class="image fit"/>
+											</div>
+											<div class="col-4 col-12-small">
+												<img src="images/imm_facial_im5.png" class="image fit"/>
+											</div>
+											<div class="col-4 col-12-small">
+												<img src="images/imm_facial_im6.png" class="image fit"/>
+											</div>
+										</div>
+									</center> 
+								</p>
+
+								<h4> The Model </h4>
+								<p>
+									After trying out a couple different architectures, I settled on a convnet with 5 convolutional layers, 2 fully connected layers, and 4 Max Pool layers. I used mean squared error loss as the prediction loss and trained the network using the Adam optimizer with a learning rate of 1e-3. Here's the exact CNN architecture I worked with for facial keypoint detection. 
+								</p>
+								<p>
+									<center>
+										<div class='row table-wrapper'>
+											<div class="col-1"></div>
+											<div class="col-10 col-12-small">
+												<figcaption> <b> Model Architecture </b> </figcaption> 
+												<br>
+
+												<table border="1" class="dataframe">
+												  <thead>
+												    <tr style="text-align: right;">
+												      <th></th>
+												      <th>Layer</th>
+												      <th>Input Shape</th>
+												      <th>Parameters</th>
+												      <th>Total Parameters</th>
+												    </tr>
+												  </thead>
+												  <tbody>
+												    <tr>
+												      <th>1</th>
+												      <td>Conv2d-1</td>
+												      <td>[1, 1, 240, 180]</td>
+												      <td>1,600</td>
+												      <td>1,600</td>
+												    </tr>
+												    <tr>
+												      <th>2</th>
+												      <td>ReLU-2</td>
+												      <td>[1, 32, 234, 174]</td>
+												      <td>0</td>
+												      <td>0</td>
+												    </tr>
+												    <tr>
+												      <th>3</th>
+												      <td>Conv2d-3</td>
+												      <td>[1, 32, 234, 174]</td>
+												      <td>100,416</td>
+												      <td>100,416</td>
+												    </tr>
+												    <tr>
+												      <th>4</th>
+												      <td>ReLU-4</td>
+												      <td>[1, 64, 228, 168]</td>
+												      <td>0</td>
+												      <td>0</td>
+												    </tr>
+												    <tr>
+												      <th>5</th>
+												      <td>MaxPool2d-5</td>
+												      <td>[1, 64, 228, 168]</td>
+												      <td>0</td>
+												      <td>0</td>
+												    </tr>
+												    <tr>
+												      <th>6</th>
+												      <td>Conv2d-6</td>
+												      <td>[1, 64, 114, 84]</td>
+												      <td>51,232</td>
+												      <td>51,232</td>
+												    </tr>
+												    <tr>
+												      <th>7</th>
+												      <td>ReLU-7</td>
+												      <td>[1, 32, 110, 80]</td>
+												      <td>0</td>
+												      <td>0</td>
+												    </tr>
+												    <tr>
+												      <th>8</th>
+												      <td>MaxPool2d-8</td>
+												      <td>[1, 32, 110, 80]</td>
+												      <td>0</td>
+												      <td>0</td>
+												    </tr>
+												    <tr>
+												      <th>9</th>
+												      <td>Conv2d-9</td>
+												      <td>[1, 32, 55, 40]</td>
+												      <td>12,816</td>
+												      <td>12,816</td>
+												    </tr>
+												    <tr>
+												      <th>10</th>
+												      <td>ReLU-10</td>
+												      <td>[1, 16, 51, 36]</td>
+												      <td>0</td>
+												      <td>0</td>
+												    </tr>
+												    <tr>
+												      <th>11</th>
+												      <td>MaxPool2d-11</td>
+												      <td>[1, 16, 51, 36]</td>
+												      <td>0</td>
+												      <td>0</td>
+												    </tr>
+												    <tr>
+												      <th>12</th>
+												      <td>Conv2d-12</td>
+												      <td>[1, 16, 25, 18]</td>
+												      <td>2,320</td>
+												      <td>2,320</td>
+												    </tr>
+												    <tr>
+												      <th>13</th>
+												      <td>ReLU-13</td>
+												      <td>[1, 16, 23, 16]</td>
+												      <td>0</td>
+												      <td>0</td>
+												    </tr>
+												    <tr>
+												      <th>14</th>
+												      <td>MaxPool2d-14</td>
+												      <td>[1, 16, 23, 16]</td>
+												      <td>0</td>
+												      <td>0</td>
+												    </tr>
+												    <tr>
+												      <th>15</th>
+												      <td>Linear-15</td>
+												      <td>[1, 1408]</td>
+												      <td>281,800</td>
+												      <td>281,800</td>
+												    </tr>
+												    <tr>
+												      <th>16</th>
+												      <td>ReLU-16</td>
+												      <td>[1, 200]</td>
+												      <td>0</td>
+												      <td>0</td>
+												    </tr>
+												    <tr>
+												      <th>17</th>
+												      <td>Linear-17</td>
+												      <td>[1, 200]</td>
+												      <td>23,316</td>
+												      <td>23,316</td>
+												    </tr>
+												  </tbody>
+												</table>
+
+											</div>
+											<div class="col-1"></div>
+										</div>
+									</center>
+								</p>
+
+								<p>
+									I trained this model for 100 epochs and found that it had not overfit (see plot below) and it gave pretty nice results too! There's also the visualization of the kernels of each convolution layer. This visualization in a way tells us what the network is looking at to figure out where to place the keypoints on the face. While these particular kernels aren't as intuitive as I was hoping they would be, this was still an interesting exercise.
+								</p>
+
+								<p>
+									<center>
+										<div class='row'>
+											<div class="col-12">
+												<img src="images/immface_loss.jpg"
+													 class="image fit" />
+											</div>
+										</div>
+									</center> 
+								</p>
+								<p>
+									<center>
+										<figcaption> Kernel Visulization </figcaption>
+										<div class='row'>
+											<div class="col-6 col-12-small">
+												<figcaption>Convolution Layer #1</figcaption>
+												<img src="images/layer_1_viz.jpg" class="image fit"/>
+											</div>
+											<div class="col-6 col-12-small">
+												<figcaption>Convolution Layer #2</figcaption>
+												<img src="images/layer_2_viz.jpg" class="image fit"/>
+											</div>
+										</div>
+										<br>
+										<div class='row'>
+											<div class="col-4 col-12-small">
+												<figcaption>Convolution Layer #3</figcaption>
+												<img src="images/layer_3_viz.jpg" class="image fit"/>
+											</div>
+											<div class="col-4 col-12-small">
+												<figcaption>Convolution Layer #4</figcaption>
+												<img src="images/layer_4_viz.jpg" class="image fit"/>
+											</div>
+											<div class="col-4 col-12-small">
+												<figcaption>Convolution Layer #5</figcaption>
+												<img src="images/layer_5_viz.jpg" class="image fit"/>
+											</div>
+										</div>
+									</center> 
+								</p>
+
+								<p>
+									Time to run the trained convnet on the validation set and see the results!
+								</p>
+								<p>
+									<center>
+										<div class='row'>
+											<div class="col-12">
+												<figcaption> CNN Predictions </figcaption>
+												<img src="images/immface_predictions.jpg"
+													 class="image fit" />
+											</div>
+										</div>
+									</center> 
+								</p>
+
+								<p>
+									Again, the model seems to do a fairly good job on most images. Interestingly, there's a clear pattern in the images it doesn't do as well on. The worst results are for the person with long messy hair followed by the bald person. There's also a single image of a woman with bad predictions; I believe that one's because she has her hands in the image while the other pictures only have faces. I believe the root cause for most of the bad predictions is just dataset imbalance. We just didn't see enough diverse data during training to prepare for Jazz hands.
+								</p>
+
+								<hr>
+								<h2 id="section2">iBUG's Faces In-the-Wild Dataset</h2>
+								<p>
+									Now we will move to a much larger dataset for training a facial keypoints detector – iBUG's Faces In-the-Wild Dataset. This dataset contains 6666 images of varying image sizes, and each image has 68 annotated facial keypoints (10 more than the previous dataset we worked with).
+								</p>
+								<h3>1. Data Preprocessing</h3>
+								<p>
+									I used 95% of the data as training data and the other 5% as our validation set. All examples are first converted to grayscale, pixel values are scales, keypoints are converted to length/height ratios from absolute pixel values, the size of the bounding box is cleverly increased while maintaining the aspect ratio and then finally the image is croped to this enlarged bounding box and then resized to a standard size. We use the same data augmentation techniques as we used earlier and use a training set 2x its original size. 
+								</p>
+
+								<p>
+									<center>
+										<figcaption> Sample Processed Images </figcaption>
+										<div class='row'>
+											<div class="col-6 col-12-small">
+												<img src="images/ibug_facial_im1.png" class="image fit"/>
+											</div>
+											<div class="col-6 col-12-small">
+												<img src="images/ibug_facial_im2.png" class="image fit"/>
+											</div>
+										</div>
+										<div class='row'>
+											<div class="col-6 col-12-small">
+												<img src="images/ibug_facial_im3.png" class="image fit"/>
+											</div>
+											<div class="col-6 col-12-small">
+												<img src="images/ibug_facial_im4.png" class="image fit"/>
+											</div>
+										</div>
+									</center> 
+								</p>
+
+								<h3>2. ResNet-18 Model</h3>
+								<p>
+									Instead of having a custom architecture with random initialization, I used a standard pretrained ResNet-18 model to get started. I changed the first and last layer of the network to make it compatible with the dimensions we're working with. Once that was done, I trained the network for 20 epochs using mean squared error as the loss, Adam as the optimizer, and 1e-3 as the learning rate for the optimizer. 
+								</p>
+
+								<p>
+									<center>
+										<div class='row table-wrapper'>
+											<div class="col-1"></div>
+											<div class="col-10 col-12-small">
+												<figcaption> <b> Model Architecture </b> </figcaption> 
+												<br>
+
+												<table border="1" class="dataframe">
+												  <thead>
+												    <tr style="text-align: right;">
+												      <th></th>
+												      <th>Layer</th>
+												      <th>Input Shape</th>
+												      <th>Parameters</th>
+												      <th>Total Parameters</th>
+												    </tr>
+												  </thead>
+												  <tbody>
+												    <tr>
+												      <th>1</th>
+												      <td>Conv2d-1</td>
+												      <td>[1, 1, 244, 244]</td>
+												      <td>3,136</td>
+												      <td>3,136</td>
+												    </tr>
+												    <tr>
+												      <th>2</th>
+												      <td>BatchNorm2d-2</td>
+												      <td>[1, 64, 122, 122]</td>
+												      <td>128</td>
+												      <td>128</td>
+												    </tr>
+												    <tr>
+												      <th>3</th>
+												      <td>ReLU-3</td>
+												      <td>[1, 64, 122, 122]</td>
+												      <td>0</td>
+												      <td>0</td>
+												    </tr>
+												    <tr>
+												      <th>4</th>
+												      <td>MaxPool2d-4</td>
+												      <td>[1, 64, 122, 122]</td>
+												      <td>0</td>
+												      <td>0</td>
+												    </tr>
+												    <tr>
+												      <th>5</th>
+												      <td>BasicBlock-5</td>
+												      <td>[1, 64, 61, 61]</td>
+												      <td>73,984</td>
+												      <td>73,984</td>
+												    </tr>
+												    <tr>
+												      <th>6</th>
+												      <td>BasicBlock-6</td>
+												      <td>[1, 64, 61, 61]</td>
+												      <td>73,984</td>
+												      <td>73,984</td>
+												    </tr>
+												    <tr>
+												      <th>7</th>
+												      <td>BasicBlock-7</td>
+												      <td>[1, 64, 61, 61]</td>
+												      <td>230,144</td>
+												      <td>230,144</td>
+												    </tr>
+												    <tr>
+												      <th>8</th>
+												      <td>BasicBlock-8</td>
+												      <td>[1, 128, 31, 31]</td>
+												      <td>295,424</td>
+												      <td>295,424</td>
+												    </tr>
+												    <tr>
+												      <th>9</th>
+												      <td>BasicBlock-9</td>
+												      <td>[1, 128, 31, 31]</td>
+												      <td>919,040</td>
+												      <td>919,040</td>
+												    </tr>
+												    <tr>
+												      <th>10</th>
+												      <td>BasicBlock-10</td>
+												      <td>[1, 256, 16, 16]</td>
+												      <td>1,180,672</td>
+												      <td>1,180,672</td>
+												    </tr>
+												    <tr>
+												      <th>11</th>
+												      <td>BasicBlock-11</td>
+												      <td>[1, 256, 16, 16]</td>
+												      <td>3,673,088</td>
+												      <td>3,673,088</td>
+												    </tr>
+												    <tr>
+												      <th>12</th>
+												      <td>BasicBlock-12</td>
+												      <td>[1, 512, 8, 8]</td>
+												      <td>4,720,640</td>
+												      <td>4,720,640</td>
+												    </tr>
+												    <tr>
+												      <th>13</th>
+												      <td>AdaptiveAvgPool2d-13</td>
+												      <td>[1, 512, 8, 8]</td>
+												      <td>0</td>
+												      <td>0</td>
+												    </tr>
+												    <tr>
+												      <th>14</th>
+												      <td>Linear-14</td>
+												      <td>[1, 512]</td>
+												      <td>69,768</td>
+												      <td>69,768</td>
+												    </tr>
+												  </tbody>
+												</table>
+
+											</div>
+											<div class="col-1"></div>
+										</div>
+									</center>
+								</p>
+								<p>
+									<center>
+										<div class='row'>
+											<div class="col-12">
+												<img src="images/resnet18_loss.jpg"
+													 class="image fit" />
+											</div>
+										</div>
+									</center> 
+								</p>
+
+								<h3>3. Results</h3>
+
+								<p>
+									<center>
+										<figcaption> Test Set Predictions </figcaption>
+										<div class='row'>
+											<div class="col-6 col-12-small">
+												<img src="images/resnet_good1.png" class="image fit"/>
+											</div>
+											<div class="col-6 col-12-small">
+												<img src="images/resnet_good2.png" class="image fit"/>
+											</div>
+										</div>
+										<br>
+										<div class='row'>
+											<div class="col-6 col-12-small">
+												<img src="images/resnet_good3.png" class="image fit"/>
+											</div>
+											<div class="col-6 col-12-small">
+												<img src="images/resnet_good4.png" class="image fit"/>
+											</div>
+										</div>
+									</center> 
+								</p>
+								<p>
+									We got a score of <b>15.06838</b> for the entire test set on Kaggle using our ResNet-18 model trained for 20 epochs using the hyperparameters specified above. Here are some more predictions.
+								</p>
+
+								<p>
+									<center>
+										<div class='row'>
+											<div class="col-4 col-12-small">
+												<figcaption> Me </figcaption>
+												<img src="images/saurav.png" class="image fit"/>
+											</div>
+											<div class="col-4 col-12-small">
+												<figcaption> Harold </figcaption>
+												<img src="images/pain.png" class="image fit"/>
+											</div>
+											<div class="col-4 col-12-small">
+												<figcaption> Baljeet </figcaption>
+												<img src="images/baljeet.png" class="image fit"/>
+											</div>
+
+										</div>
+									</center> 
+								</p>
+								<p>
+									The model seems to do decently well on two human faces it has never seen before but it fails when it comes to detecting facial keypoints in cartoons.
+								</p>
+
+								<h3>4. Shift-Invariant ResNet-18 Model</h3>
+								<p>
+									I tried using a Shift-Invariant ResNet-18 Model from <a href='https://richzhang.github.io/antialiased-cnns/'>Richard Zhang's work</a> to compare it's performance to the standard pretrained ResNet-18 model. I trained both the models using the same hyperparameters (no optimization for either) so to have a fairer comparision. I ran both models with MSE, Adam, alpha=1e-3 for 20 epochs. In the end the standard model performed better on unseen data (Kaggle test set). The standard model's loss was 15.06838 as compared to the other model's 20.14039. 
+								</p>
+								<p>
+									I had a couple hypotheses as to why this might have happened when intuituively we would expect our new model to perform better. The first, most reasonable hypothesis is that the model got stuck in a local minima around the 20<sup>th</sup> epoch which caused its performance to go down. This was partly supported by the validation loss of the model as well which started going up after the epoch 16. Now this could potentially imply that the model was overfitting but I don't believe that was the case here given our large diverse dataset with heavy data augmentation. Moreover, the model had the loss of 16.29837 (better) on the test set using the weights from epoch 16 instead of the ones from epoch 20 again pointing towards unlucky local minima/overfitting. The other hypothesis I had was that maybe the model actually wasn't better because we accounted for shift invariance through random shifts and rotations through our data augmentation. Given how long it took to train these models I wasn't able to further test out my theories, but I believe the new model would probably have beat the vanilla ResNet model if trained longer with hyperparameter optimization. 
+								</p>
+
+
+								<hr>
+
+			</div>
+
+		<!-- Scripts -->
+			<script src="assets/js/jquery.min.js"></script>
+			<script src="assets/js/jquery.scrollex.min.js"></script>
+			<script src="assets/js/jquery.scrolly.min.js"></script>
+			<script src="assets/js/browser.min.js"></script>
+			<script src="assets/js/breakpoints.min.js"></script>
+			<script src="assets/js/util.js"></script>
+			<script src="assets/js/main.js"></script>
+
+	</body>
 </html>
