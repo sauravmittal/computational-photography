@@ -1,0 +1,659 @@
+<!DOCTYPE HTML>
+<!--
+	Massively by HTML5 UP
+	html5up.net | @ajlkn
+	Free for personal and commercial use under the CCA 3.0 license (html5up.net/license)
+-->
+<html>
+	<head>
+		<title>Image Stitching</title>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+		<link rel="stylesheet" href="assets/css/main.css" />
+		<noscript><link rel="stylesheet" href="assets/css/noscript.css" /></noscript>
+
+		<!-- Global site tag (gtag.js) - Google Analytics -->
+		<script async src="https://www.googletagmanager.com/gtag/js?id=UA-180905576-1"></script>
+		<script>
+		  window.dataLayer = window.dataLayer || [];
+		  function gtag(){dataLayer.push(arguments);}
+		  gtag('js', new Date());
+
+		  gtag('config', 'UA-180905576-1');
+		</script>
+
+	</head>
+	<body class="is-preload">
+
+		<!-- Wrapper -->
+			<div id="wrapper">
+
+				<!-- Intro -->
+					<div id="intro">
+						<h1>COMPSCI 194-26: Project 5<br> <br> Image Stitching <br></h1>
+						<p style="background-color: rgba(16, 16, 16, 0.55);
+										  padding: 0.25rem 1rem;
+										  border-color: rgba(16, 16, 16, 0.5);">
+							<b>Saurav Mittal</b> | saurav@berkeley.edu 
+						</p> <br><br>
+					</div>
+				
+ 					<!-- Main -->
+					<div id="main">
+
+						<!-- Featured Post -->
+<!-- 							<article class="post featured">
+								<header class="major">
+								</header>
+								
+							</article>
+ -->
+						<!-- Featured Post -->
+							<article class="post">
+								<header class="major">
+									<h2>Project Report</h2>
+								</header>
+
+<!-- 								<h2>Results Sneak Peak</h2>
+									<a class="image main" style="margin-top: -0.5rem;"><img src="images/compare/workshop.jpg"/></a>
+								<hr>
+ -->
+								<h2>Table of Contents</h2>
+								<div class="row">
+									<div class="col-12 col-12-small">
+										<a href="#introduction"><b>Introduction</b></a>
+										<ol></ol>
+									</div>
+
+								</div>
+								<div class='row'>
+									<div class="col-12 col-12-small">
+										<a href="#section1"><b>Generating Image Mosaics</b></a>
+										<ol>
+											<li> Acquire Images & Keypoints </li>
+											<li> Warping Images </li>
+											<li> Blending Warped Images </li>
+										</ol>
+									</div>
+								</div>
+
+								<div class='row'>
+									<div class="col-12 col-12-small">
+										<a href="#section2"><b> Auto Keypoint Selection </b></a>
+										<ol>
+											<li> Proposing Keypoints </li>
+											<li> Point Matching using Feature Descriptors </li>
+											<li> RANSAC </li>
+											<li> Image Stitching Results </li>
+										</ol>
+									</div>
+								</div>
+<!-- 								<div class='row'>
+									<div class="col-12 col-12-small">
+
+										<a href="#section3"><b>Morphing Applications</b></a>
+										<ol>
+											<li> Making Caricatures </li>
+											<li> Transformations & Transitions<sup>*</sup></li>
+											<li> Music Visualizer<sup>*#</sup></li>
+										</ol>
+									</div>
+								</div>
+ -->
+<!-- 
+ 								<span style='font-size: 0.6em; line-height: 1px;'>
+									* bells & whistles
+								</span>
+ -->
+								<hr>
+
+								<h2 id='introduction'>Introduction</h2>
+								<p>
+									This project is all about stitching together many photographs to create larger composite images. In the first half, we will capture source photographs, define correspondences between them, and then warp and composite them. In the second part, we will automate the correspondence-finding portion of the first part so that we can create the panoramas automatically.
+
+								</p>
+
+								<hr>
+								<h2 id="section1">Generating Image Mosaics</h2>
+								<p>
+									In this section we will come up with a an automated process to stitch images together in a mosiac given images & labeled keypoints.
+								</p>
+								<h3>1. Acquire Images & Keypoints</h3>
+								<p>
+									First we need to get images that we want to stitch together. Once we have those, for now we'll manually label correspondences in the images that can we used to stitch them together. In the next section of the project we'll talk about how to automate this process, but for now here are some manually annoted examples.
+								</p>
+								<p>
+									<center>
+										<figcaption> Sproul View </figcaption>
+
+										<div class='row'>
+											<div class="col-6 col-12-small">
+												<img src="images/view_left_annotated.jpg" class="image fit"/>
+											</div>
+
+											<div class="col-6 col-12-small">
+												<img src="images/view_right_annotated.jpg" class="image fit"/>
+											</div>
+										</div> 
+										<br>
+										<figcaption> Bancroft at Night </figcaption>
+
+										<div class='row'>
+											<div class="col-6 col-12-small">
+												<img src="images/bancroft_left_annotated.jpg" class="image fit"/>
+											</div>
+
+											<div class="col-6 col-12-small">
+												<img src="images/bancroft_right_annotated.jpg" class="image fit"/>
+											</div>
+										</div> 
+										<br>
+										<figcaption> Artichokes at Night </figcaption>
+
+										<div class='row'>
+
+											<div class="col-6 col-12-small">
+												<img src="images/graduate_left_annotated.jpg" class="image fit"/>
+											</div>
+
+											<div class="col-6 col-12-small">
+												<img src="images/graduate_right_annotated.jpg" class="image fit"/>
+											</div> 
+										</div>
+
+									</center> 
+								</p>
+
+
+								<h3>2. Warping Images</h3>
+								<p>
+									Before we can warp our images into alignment, we need to recover the parameters of the transformation between each pair of images. In our case, the transformation is a homography: p’=Hp, where H is a 3x3 matrix with 8 degrees of freedom (lower right corner is a scaling factor and can be set to 1). One way to recover the homography is via a set of (p’,p) pairs of corresponding points taken from the two images. In order to compute the entries in the homography matrix, we will need to set up a linear system of n equations (i.e. a matrix equation of the form Ah=b where h is a vector holding the 8 unknown entries of H). If n=4, the system can be solved using a standard technique. However, with only four points, the homography recovery will be very unstable and prone to noise. Therefore more than 4 correspondences should be provided producing an overdetermined system which should be solved using least-squares.
+								</p>
+
+								<p>
+									Now that we have out homography matrix, we can warp our image to align it with our other image. 
+								</p>
+								<p>
+									<center>
+
+										<figcaption> Sproul View (Warped) </figcaption>
+
+										<div class='row'>
+											<div class="col-6 col-12-small">
+												<img src="images/view_left_warped.jpg" class="image fit"/>
+											</div>
+
+											<div class="col-6 col-12-small">
+												<img src="images/view_right_warped.jpg" class="image fit"/>
+											</div>
+										</div> 
+										<br>
+										<figcaption> Bancroft at Night (Warped) </figcaption>
+
+										<div class='row'>
+											<div class="col-6 col-12-small">
+												<img src="images/bancroft_left_warped.jpg" class="image fit"/>
+											</div>
+
+											<div class="col-6 col-12-small">
+												<img src="images/bancroft_right_warped.jpg" class="image fit"/>
+											</div>
+										</div> 
+										<br>
+										<figcaption> Artichokes at Night (Warped) </figcaption>
+
+										<div class='row'>
+
+											<div class="col-6 col-12-small">
+												<img src="images/graduate_left_warped.jpg" class="image fit"/>
+											</div>
+
+											<div class="col-6 col-12-small">
+												<img src="images/graduate_right_warped.jpg" class="image fit"/>
+											</div> 
+										</div>
+
+									</center> 
+								</p>
+
+								<p>
+									We can even rectify individual images using this procedure as well. Since here we only have one image and need to compute a homography for, say, ground plane rectification (rotating the camera to point downward), we will need to define the correspondences using something we know about the image. E.g. if we know that the tiles on the floor are square, we can click on the four corners of a tile and store them in im1_pts while im2_pts we define by hand to be a square, e.g. [0 0; 0 1; 1 0; 1 1].
+
+								</p>
+								<p>
+									<center>
+										<figcaption> Weird Blue Glow-ey Cube </figcaption>
+
+										<div class='row'>
+											<div class="col-6 col-12-small">
+												<figcaption> Original </figcaption>
+												<img src="images/tesseract.jpg" class="image fit"/>
+											</div>
+
+											<div class="col-6 col-12-small">
+												<figcaption> Rectified (Cropped) </figcaption>
+
+												<img src="images/tesseract_rectified.jpg" class="image fit"/>
+											</div>
+										</div> 
+										<br>
+
+										<figcaption> Tiles </figcaption>
+										<div class='row'>
+											<div class="col-6 col-12-small">
+												<figcaption> Original </figcaption>
+												<img src="images/tiles.jpg" class="image fit"/>
+											</div>
+
+											<div class="col-6 col-12-small">
+												<figcaption> Rectified (Cropped) </figcaption>
+												<img src="images/tiles_rectified.jpg" class="image fit"/>
+											</div>
+										</div> 
+										<br>
+									</center> 
+								</p>
+
+								<h3> 3. Blending Warped Images </h3>
+								<p>
+									We warped the images so they're registered and create an image mosaic. Instead of having one picture overwrite the other, which would lead to strong edge artifacts, we use weighted averaging. 
+								</p>
+								<p>
+									Now the tricky part here was determining how to weight the images together so we get pleasant results. I tried a few things which performed decent but got the best results with a custom weighting function I implemented. In short my metric looked at the entire mosaic together & focused on the overlap between the aligned images. Now for each pixel in the overlap region, the blending weight was determined using the distance to the nearest edge in the images. For example, if we're trying to find the weight for the pixel (x, y) in image 1, then we find the distance to the nearest edge (border of the image) of image 1 from (x, y) and the distance to the closest edge in image 2. Using these distances we compute the weight as follows: dist_im1 / (dist_im1 + dist_im2). Intuitively this is giving high weights to pixels deep inside an image & lower weights to pixel near the image edges and this further weights this by using distance information from the other image. Here are some final mosaic generated using this blending technique. 
+								</p>
+								<p>
+									<center>
+
+										<code> Sproul View </code>
+
+										<div class='row'>
+											<div class="col-6 col-12-small">
+												<figcaption> Left (Warped) </figcaption>
+												<img src="images/view_left_warped.jpg" class="image fit"/>
+											</div>
+
+											<div class="col-6 col-12-small">
+												<figcaption> Right (Warped) </figcaption>
+												<img src="images/view_right_warped.jpg" class="image fit"/>
+											</div>
+										</div> <br>
+										<div class='row'>
+											<div class="col-6 col-12-small">
+												<figcaption> Left (Blending Filter) </figcaption>
+												<img src="images/view_left_blending_filter.jpg" class="image fit"/>
+											</div>
+
+											<div class="col-6 col-12-small">
+												<figcaption> Right (Blending Filter) </figcaption>
+												<img src="images/view_right_blending_filter.jpg" class="image fit"/>
+											</div>
+										</div> <br>
+										<div class='row'>
+											<div class="col-12 col-12-small">
+												<figcaption> Mosaic </figcaption>
+												<img src="images/view_mosaic.jpg" class="image fit"/>
+											</div>
+										</div> 
+										<div class='row'>
+											<div class="col-12 col-12-small">
+												<figcaption> Mosaic (Cropped) </figcaption>
+												<img src="images/view_mosaic_cropped.jpg" class="image fit"/>
+											</div>
+										</div> 
+										<br><br>
+
+
+										<code> Bancroft at Night </code>
+										<div class='row'>
+											<div class="col-6 col-12-small">
+												<figcaption> Left (Warped) </figcaption>
+												<img src="images/bancroft_left_warped.jpg" class="image fit"/>
+											</div>
+
+											<div class="col-6 col-12-small">
+												<figcaption> Right (Warped) </figcaption>
+												<img src="images/bancroft_right_warped.jpg" class="image fit"/>
+											</div>
+										</div> <br>
+										<div class='row'>
+											<div class="col-6 col-12-small">
+												<figcaption> Left (Blending Filter) </figcaption>
+												<img src="images/bancroft_left_blending_filter.jpg" class="image fit"/>
+											</div>
+
+											<div class="col-6 col-12-small">
+												<figcaption> Right (Blending Filter) </figcaption>
+												<img src="images/bancroft_right_blending_filter.jpg" class="image fit"/>
+											</div>
+										</div> <br>
+										<div class='row'>
+											<div class="col-12 col-12-small">
+												<figcaption> Mosaic </figcaption>
+												<img src="images/bancroft_mosaic.jpg" class="image fit"/>
+											</div>
+										</div> 
+										<div class='row'>
+											<div class="col-12 col-12-small">
+												<figcaption> Mosaic (Cropped) </figcaption>
+												<img src="images/bancroft_mosaic_cropped.jpg" class="image fit"/>
+											</div>
+										</div> 
+										<br><br>
+
+										<code> Artichokes at Night </code>
+										<div class='row'>
+											<div class="col-6 col-12-small">
+												<figcaption> Left (Warped) </figcaption>
+												<img src="images/graduate_left_warped.jpg" class="image fit"/>
+											</div>
+
+											<div class="col-6 col-12-small">
+												<figcaption> Right (Warped) </figcaption>
+												<img src="images/graduate_right_warped.jpg" class="image fit"/>
+											</div>
+										</div> <br>
+										<div class='row'>
+											<div class="col-6 col-12-small">
+												<figcaption> Left (Blending Filter) </figcaption>
+												<img src="images/graduate_left_blending_filter.jpg" class="image fit"/>
+											</div>
+
+											<div class="col-6 col-12-small">
+												<figcaption> Right (Blending Filter) </figcaption>
+												<img src="images/graduate_right_blending_filter.jpg" class="image fit"/>
+											</div>
+										</div> <br>
+										<div class='row'>
+											<div class="col-12 col-12-small">
+												<figcaption> Mosaic </figcaption>
+												<img src="images/graduate_mosaic.jpg" class="image fit"/>
+											</div>
+										</div> 
+										<div class='row'>
+											<div class="col-12 col-12-small">
+												<figcaption> Mosaic (Cropped) </figcaption>
+												<img src="images/graduate_mosaic_cropped.jpg" class="image fit"/>
+											</div>
+										</div> 
+										<br><br>
+
+									</center> 
+								</p>
+
+								<hr>
+								<h2 id="section2">Auto Keypoint Selection</h2>
+								<p>
+									We will follow the paper <a href="https://inst.eecs.berkeley.edu/~cs194-26/fa20/hw/proj5/Papers/MOPS.pdf">“Multi-Image Matching using Multi-Scale Oriented Patches” by Brown et al.</a> for this section and make some simplifications to it.
+								</p>
+								<h3>1. Proposing Keypoints</h3>
+								<p>
+									We initiate our keypoint suggestion journey by running the Harris Interest Point Detector on our images. This gives us a lot of points with scores. While we can just proceed with the top N points based on the score, we would get better results by using Adaptive Non-Maximal Suppression to select points from here. We expect the ANMS corners to be much better distributed across the image as compared to just the top Harris Corners. Acccording to the paper, experiments on a large database of panoramic images show that distributing interest points spatially in this way, as opposed to selecting based on max corner strength, results in fewer dropped image matches. 
+								</p>
+
+								<p>
+									<center>
+										<figcaption> Harris Corners (Top 1000) </figcaption>
+										<div class='row'>
+											<div class="col-6 col-12-small">
+												<img src="images/view_left_top_harris.jpg" class="image fit"/>
+											</div>
+											<div class="col-6 col-12-small">
+												<img src="images/view_right_top_harris.jpg" class="image fit"/>
+											</div>
+										</div><br>
+
+										<figcaption> ANMS Corners (Top 1000) </figcaption>
+										<div class='row'>
+											<div class="col-6 col-12-small">
+												<img src="images/view_left_top_anms.jpg" class="image fit"/>
+											</div>
+											<div class="col-6 col-12-small">
+												<img src="images/view_right_top_anms.jpg" class="image fit"/>
+											</div>
+										</div>
+									</center> 
+								</p>
+
+
+								<h3>2. Point Matching using Feature Descriptors</h3>
+								<p>
+									Given an oriented interest point, we sample a 40x40 patch of pixels around the interest point, blur it and then downscale it to an 8x8 patch. This 8x8 patch is normalised so that the mean is 0 and the standard deviation is 1. This makes the features invariant to affine changes in intensity (bias and gain).							
+								</p>
+								<p>
+									Once we have the feature patches for all our interest points in both the images, we can implement Feature Matching (Section 5) from the paper. We find pairs of features that look similar and are thus likely to be good matches. For thresholding, we use the simpler approach due to Lowe of thresholding on the ratio between the first and the second nearest neighbors.
+								</p>
+								<p>
+									<center>
+										<figcaption> Feature Patch Matches </figcaption>
+										<div class='row'>
+											<div class="col-12">
+												<img src="images/view_feature_matches.jpg"
+													 class="image fit" />
+											</div>
+										</div>
+									</center> 
+								</p>
+
+								<h3>3. RANSAC</h3>
+								<p>
+									We've made good progress but it is still quite possible that we have some incorrect point pair matches. We use RANSAC to find the most reliable point pairs out of all the ones we have. Here's the general algorithm for RANSAC:
+								</p>
+								<p>
+									<ol>
+										<li>Loop</li>
+											<ol>
+												<li>Select four feature pairs (at random)</li>
+												<li>Compute homography H (exact)</li>
+												<li>Compute inliers where dist(p_i’, H*p_i ) < ε</li>
+											</ol>
+										<li>Keep largest set of inliers</li>
+										<li>Re-compute least-squares H estimate on all of the inliers</li>
+									</ol>
+								</p>
+								<p>
+
+								<h3>4. Image Stitching Results</h3>
+								<p>
+									With this, we now have a system that can take in two images & automatically compute correspondences between them. What's great about that is that we can feed the results from this to our image mosaic generation algorithm and have it generate an mosaic. With both of these parts together, we can now automatically generate image mosaics using just raw images we want to stitch together! Let's see some results!
+								</p>
+
+								<p>
+
+									<center>
+										<code> Sproul View </code>
+										<div class='row'>
+											<div class="col-6 col-12-small">
+												<figcaption> Left </figcaption>
+												<img src="images/view_left.jpg" class="image fit"/>
+											</div>
+
+											<div class="col-6 col-12-small">
+												<figcaption> Right </figcaption>
+												<img src="images/view_right.jpg" class="image fit"/>
+											</div>
+										</div> 
+										<div class='row'>
+											<div class="col-12 col-12-small">
+												<figcaption> Mosaic (Manual) </figcaption>
+												<img src="images/view_mosaic_cropped.jpg" class="image fit"/>
+											</div>
+										</div> 
+										<div class='row'>
+											<div class="col-12 col-12-small">
+												<figcaption> Mosaic (Auto) </figcaption>
+												<img src="images/view_auto_mosaic_cropped.jpg" class="image fit"/>
+											</div>
+										</div> 
+										<br><br>
+
+
+										<code> Bancroft at Night </code>
+										<div class='row'>
+											<div class="col-6 col-12-small">
+												<figcaption> Left </figcaption>
+												<img src="images/bancroft_left.jpg" class="image fit"/>
+											</div>
+
+											<div class="col-6 col-12-small">
+												<figcaption> Right </figcaption>
+												<img src="images/bancroft_right.jpg" class="image fit"/>
+											</div>
+										</div> 
+										<div class='row'>
+											<div class="col-12 col-12-small">
+												<figcaption> Mosaic (Manual) </figcaption>
+												<img src="images/bancroft_mosaic_cropped.jpg" class="image fit"/>
+											</div>
+										</div> 
+										<div class='row'>
+											<div class="col-12 col-12-small">
+												<figcaption> Mosaic (Auto) </figcaption>
+												<img src="images/bancroft_auto_mosaic_cropped.jpg" class="image fit"/>
+											</div>
+										</div> 
+										<br><br>
+
+										
+										<code> Artichokes at Night </code>
+										<div class='row'>
+											<div class="col-6 col-12-small">
+												<figcaption> Left </figcaption>
+												<img src="images/graduate_left.jpg" class="image fit"/>
+											</div>
+
+											<div class="col-6 col-12-small">
+												<figcaption> Right </figcaption>
+												<img src="images/graduate_right.jpg" class="image fit"/>
+											</div>
+										</div> 
+										<div class='row'>
+											<div class="col-12 col-12-small">
+												<figcaption> Mosaic (Manual) </figcaption>
+												<img src="images/graduate_mosaic_cropped.jpg" class="image fit"/>
+											</div>
+										</div> 
+										<div class='row'>
+											<div class="col-12 col-12-small">
+												<figcaption> Mosaic (Auto) </figcaption>
+												<img src="images/graduate_auto_mosaic_cropped.jpg" class="image fit"/>
+											</div>
+										</div> 
+										<br><br>
+
+
+									</center>
+								</p>
+								<p>
+									Here are some more automatically generated mosaics!
+								</p>
+								<p>
+									<center>
+
+
+										<div class='row'>
+											<div class="col-6 col-12-small">
+												<img src="images/tree_left.jpg" class="image fit"/>
+											</div>
+
+											<div class="col-6 col-12-small">
+												<img src="images/tree_right.jpg" class="image fit"/>
+											</div>
+										</div> 
+										<div class='row'>
+											<div class="col-12 col-12-small">
+												<img src="images/tree_auto_mosaic_cropped.jpg" class="image fit"/>
+											</div>
+										</div> 
+										<br><br>
+
+
+
+										<div class='row'>
+											<div class="col-6 col-12-small">
+												<img src="images/courtyard_left.jpg" class="image fit"/>
+											</div>
+
+											<div class="col-6 col-12-small">
+												<img src="images/courtyard_right.jpg" class="image fit"/>
+											</div>
+										</div> 
+										<div class='row'>
+											<div class="col-12 col-12-small">
+												<img src="images/courtyard_auto_mosaic_cropped.jpg" class="image fit"/>
+											</div>
+										</div> 
+										<br><br>
+
+
+
+										<div class='row'>
+											<div class="col-6 col-12-small">
+												<img src="images/gilman_left.jpg" class="image fit"/>
+											</div>
+
+											<div class="col-6 col-12-small">
+												<img src="images/gilman_right.jpg" class="image fit"/>
+											</div>
+										</div> 
+										<div class='row'>
+											<div class="col-12 col-12-small">
+												<img src="images/gilman_auto_mosaic_cropped.jpg" class="image fit"/>
+											</div>
+										</div> 
+										<br><br>
+
+
+
+										<div class='row'>
+											<div class="col-6 col-12-small">
+												<img src="images/green_left.jpg" class="image fit"/>
+											</div>
+
+											<div class="col-6 col-12-small">
+												<img src="images/green_right.jpg" class="image fit"/>
+											</div>
+										</div> 
+										<div class='row'>
+											<div class="col-12 col-12-small">
+												<img src="images/green_auto_mosaic_cropped.jpg" class="image fit"/>
+											</div>
+										</div> 
+										<br><br>
+
+
+
+										<div class='row'>
+											<div class="col-6 col-12-small">
+												<img src="images/room_left.jpg" class="image fit"/>
+											</div>
+
+											<div class="col-6 col-12-small">
+												<img src="images/room_right.jpg" class="image fit"/>
+											</div>
+										</div> 
+										<div class='row'>
+											<div class="col-12 col-12-small">
+												<img src="images/room_auto_mosaic_cropped.jpg" class="image fit"/>
+											</div>
+										</div> 
+										<br><br>
+
+
+									</center> 
+								</p>
+
+								<hr>
+
+			</div>
+
+		<!-- Scripts -->
+			<script src="assets/js/jquery.min.js"></script>
+			<script src="assets/js/jquery.scrollex.min.js"></script>
+			<script src="assets/js/jquery.scrolly.min.js"></script>
+			<script src="assets/js/browser.min.js"></script>
+			<script src="assets/js/breakpoints.min.js"></script>
+			<script src="assets/js/util.js"></script>
+			<script src="assets/js/main.js"></script>
+
+	</body>
+</html>
