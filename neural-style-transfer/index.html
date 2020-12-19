@@ -1,0 +1,598 @@
+<!DOCTYPE HTML>
+<!--
+	Massively by HTML5 UP
+	html5up.net | @ajlkn
+	Free for personal and commercial use under the CCA 3.0 license (html5up.net/license)
+-->
+<html>
+	<head>
+		<title>Neural Style Transfer</title>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+		<link rel="stylesheet" href="assets/css/main.css" />
+		<noscript><link rel="stylesheet" href="assets/css/noscript.css" /></noscript>
+
+		<!-- Global site tag (gtag.js) - Google Analytics -->
+		<script async src="https://www.googletagmanager.com/gtag/js?id=UA-180905576-1"></script>
+		<script>
+		  window.dataLayer = window.dataLayer || [];
+		  function gtag(){dataLayer.push(arguments);}
+		  gtag('js', new Date());
+
+		  gtag('config', 'UA-180905576-1');
+		</script>
+
+	</head>
+	<body class="is-preload">
+
+		<!-- Wrapper -->
+			<div id="wrapper">
+
+				<!-- Intro -->
+					<div id="intro">
+						<h1> Neural Style Transfer <br></h1>
+						<p style="background-color: rgba(16, 16, 16, 0.55);
+										  padding: 0.25rem 1rem;
+										  border-color: rgba(16, 16, 16, 0.5);">
+							<b>Saurav Mittal</b> | saurav@berkeley.edu <br>
+							<b>Rina Lu</b> | rinaq@berkeley.edu 
+
+						</p>
+
+					</div>
+				
+ 					<!-- Main -->
+					<div id="main">
+
+						<!-- Featured Post -->
+<!-- 							<article class="post featured">
+								<header class="major">
+								</header>
+								
+							</article>
+ -->
+						<!-- Featured Post -->
+							<article class="post">
+								<header class="major">
+									<h2>Project Report</h2>
+								</header>
+
+<!-- 								<h2>Results Sneak Peak</h2>
+									<a class="image main" style="margin-top: -0.5rem;"><img src="images/compare/workshop.jpg"/></a>
+								<hr>
+ -->
+<!-- 								<h2>Table of Contents</h2>
+								<div class="row">
+									<div class="col-12 col-12-small">
+										<a href="#introduction"><b>Introduction</b></a>
+										<ol></ol>
+									</div>
+
+								</div>
+								<div class='row'>
+									<div class="col-12 col-12-small">
+										<a href="#section1"><b>Generating Image Mosaics</b></a>
+										<ol>
+											<li> Acquire Images & Keypoints </li>
+											<li> Warping Images </li>
+											<li> Blending Warped Images </li>
+										</ol>
+									</div>
+								</div>
+
+								<div class='row'>
+									<div class="col-12 col-12-small">
+										<a href="#section2"><b> Auto Keypoint Selection </b></a>
+										<ol>
+											<li> Proposing Keypoints </li>
+											<li> Point Matching using Feature Descriptors </li>
+											<li> RANSAC </li>
+											<li> Image Stitching Results </li>
+										</ol>
+									</div>
+								</div>
+ --><!-- 								<div class='row'>
+									<div class="col-12 col-12-small">
+
+										<a href="#section3"><b>Morphing Applications</b></a>
+										<ol>
+											<li> Making Caricatures </li>
+											<li> Transformations & Transitions<sup>*</sup></li>
+											<li> Music Visualizer<sup>*#</sup></li>
+										</ol>
+									</div>
+								</div>
+ -->
+<!-- 
+ 								<span style='font-size: 0.6em; line-height: 1px;'>
+									* bells & whistles
+								</span>
+ -->
+								<hr>
+
+								<h2 id='introduction'>Introduction</h2>
+								<p>
+									Neural Style Transfer (NST) refers to a class of software algorithms that manipulate digital images, or videos, in order to adopt the appearance or visual style of another image. NST algorithms are characterized by their use of deep neural networks for the sake of image transformation. 
+								</p>
+								<p>
+									In fine art, especially painting, humans have mastered the skill to create unique visual experiences through composing a complex interplay between the content and style of an image. In this project, we reimplement the work done by Gatys et al. in <a href='https://arxiv.org/pdf/1508.06576.pdf'> A Neural Algorithm of Artistic Style </a>. Their paper uses an artificial system based on a Deep Neural Network that creates artistic images of high perceptual quality. The system uses neural representations to separate and recombine content and style of arbitrary images, providing a neural algorithm for the creation of artistic images. 
+								</p>
+
+								<hr>
+
+								<h2> Technical Details </h2>
+								<h3 id="section1">1. Algorithm Overview </h3>
+								<p>
+									Here's an extremely brief overview of the general process here. We start with two images, one content image & one style image. We want to generate a new image that has the features of the content image with the 'style' of the style image. We define two loss functions, one scores how close the features in our new image are to the features in the content image [content loss] and the other one scores how well the style has been recreated on our image [style loss]. The two loss functions operate on the activations of different layers of the network and compare the activations of our generated image to the activations computed by the content & style image respectively. We compute the total loss by weighting these together and then backprop to find pixel-level gradients for our generated image and then optimize for it (<i>all</i> without changing the weights/biases of the model). We repeat this process until we have results we're happy with.  
+								</p>
+
+
+								<h3 id="section1">2. Model Architecture</h3>
+
+								<p>
+									For style transfer we decided to go with a VGG-19 network as described here. The major modifications were adding a normalization layer at the top so all input images (even mid-iteration noise images) get normalized using ImageNet metrics (the PyTorch model used was trained with this as a preprocessing step). Other than that, we got rid the entire classification part of the network as we only care about the activation volumes at some key layers and not the actual predictions for the images fed.
+								</p>
+
+								<!-- Table -->
+								<p>
+									<center>
+										<div class='row table-wrapper'>
+											<div class="col-2 col-12-small">
+											</div>
+
+											<div class="col-8 col-12-small">
+												<figcaption> <b> VGG-19 Architecture </b> </figcaption> 
+												<br>
+												<table border="1" class="dataframe">
+												  <thead>
+												    <tr style="text-align: right;">
+												      <th></th>
+												      <th>Layer</th>
+												      <th>Output Shape</th>
+												      <th>Param #</th>
+												    </tr>
+												  </thead>
+												  <tbody>
+												    <tr>
+												      <th>0</th>
+												      <td>Normalization-1</td>
+												      <td>[-1, 3, 224, 224]</td>
+												      <td>0</td>
+												    </tr>
+												    <tr>
+												      <th>1</th>
+												      <td>Conv2d-2</td>
+												      <td>[-1, 64, 224, 224]</td>
+												      <td>1,792</td>
+												    </tr>
+												    <tr>
+												      <th>2</th>
+												      <td>ReLU-3</td>
+												      <td>[-1, 64, 224, 224]</td>
+												      <td>0</td>
+												    </tr>
+												    <tr>
+												      <th>3</th>
+												      <td>Conv2d-4</td>
+												      <td>[-1, 64, 224, 224]</td>
+												      <td>36,928</td>
+												    </tr>
+												    <tr>
+												      <th>4</th>
+												      <td>ReLU-5</td>
+												      <td>[-1, 64, 224, 224]</td>
+												      <td>0</td>
+												    </tr>
+												    <tr>
+												      <th>5</th>
+												      <td>AvgPool2d-6</td>
+												      <td>[-1, 64, 112, 112]</td>
+												      <td>0</td>
+												    </tr>
+												    <tr>
+												      <th>6</th>
+												      <td>Conv2d-7</td>
+												      <td>[-1, 128, 112, 112]</td>
+												      <td>73,856</td>
+												    </tr>
+												    <tr>
+												      <th>7</th>
+												      <td>ReLU-8</td>
+												      <td>[-1, 128, 112, 112]</td>
+												      <td>0</td>
+												    </tr>
+												    <tr>
+												      <th>8</th>
+												      <td>Conv2d-9</td>
+												      <td>[-1, 128, 112, 112]</td>
+												      <td>147,584</td>
+												    </tr>
+												    <tr>
+												      <th>9</th>
+												      <td>ReLU-10</td>
+												      <td>[-1, 128, 112, 112]</td>
+												      <td>0</td>
+												    </tr>
+												    <tr>
+												      <th>10</th>
+												      <td>AvgPool2d-11</td>
+												      <td>[-1, 128, 56, 56]</td>
+												      <td>0</td>
+												    </tr>
+												    <tr>
+												      <th>11</th>
+												      <td>Conv2d-12</td>
+												      <td>[-1, 256, 56, 56]</td>
+												      <td>295,168</td>
+												    </tr>
+												    <tr>
+												      <th>12</th>
+												      <td>ReLU-13</td>
+												      <td>[-1, 256, 56, 56]</td>
+												      <td>0</td>
+												    </tr>
+												    <tr>
+												      <th>13</th>
+												      <td>Conv2d-14</td>
+												      <td>[-1, 256, 56, 56]</td>
+												      <td>590,080</td>
+												    </tr>
+												    <tr>
+												      <th>14</th>
+												      <td>ReLU-15</td>
+												      <td>[-1, 256, 56, 56]</td>
+												      <td>0</td>
+												    </tr>
+												    <tr>
+												      <th>15</th>
+												      <td>Conv2d-16</td>
+												      <td>[-1, 256, 56, 56]</td>
+												      <td>590,080</td>
+												    </tr>
+												    <tr>
+												      <th>16</th>
+												      <td>ReLU-17</td>
+												      <td>[-1, 256, 56, 56]</td>
+												      <td>0</td>
+												    </tr>
+												    <tr>
+												      <th>17</th>
+												      <td>Conv2d-18</td>
+												      <td>[-1, 256, 56, 56]</td>
+												      <td>590,080</td>
+												    </tr>
+												    <tr>
+												      <th>18</th>
+												      <td>ReLU-19</td>
+												      <td>[-1, 256, 56, 56]</td>
+												      <td>0</td>
+												    </tr>
+												    <tr>
+												      <th>19</th>
+												      <td>AvgPool2d-20</td>
+												      <td>[-1, 256, 28, 28]</td>
+												      <td>0</td>
+												    </tr>
+												    <tr>
+												      <th>20</th>
+												      <td>Conv2d-21</td>
+												      <td>[-1, 512, 28, 28]</td>
+												      <td>1,180,160</td>
+												    </tr>
+												    <tr>
+												      <th>21</th>
+												      <td>ReLU-22</td>
+												      <td>[-1, 512, 28, 28]</td>
+												      <td>0</td>
+												    </tr>
+												    <tr>
+												      <th>22</th>
+												      <td>Conv2d-23</td>
+												      <td>[-1, 512, 28, 28]</td>
+												      <td>2,359,808</td>
+												    </tr>
+												    <tr>
+												      <th>23</th>
+												      <td>ReLU-24</td>
+												      <td>[-1, 512, 28, 28]</td>
+												      <td>0</td>
+												    </tr>
+												    <tr>
+												      <th>24</th>
+												      <td>Conv2d-25</td>
+												      <td>[-1, 512, 28, 28]</td>
+												      <td>2,359,808</td>
+												    </tr>
+												    <tr>
+												      <th>25</th>
+												      <td>ReLU-26</td>
+												      <td>[-1, 512, 28, 28]</td>
+												      <td>0</td>
+												    </tr>
+												    <tr>
+												      <th>26</th>
+												      <td>Conv2d-27</td>
+												      <td>[-1, 512, 28, 28]</td>
+												      <td>2,359,808</td>
+												    </tr>
+												    <tr>
+												      <th>27</th>
+												      <td>ReLU-28</td>
+												      <td>[-1, 512, 28, 28]</td>
+												      <td>0</td>
+												    </tr>
+												    <tr>
+												      <th>28</th>
+												      <td>AvgPool2d-29</td>
+												      <td>[-1, 512, 14, 14]</td>
+												      <td>0</td>
+												    </tr>
+												    <tr>
+												      <th>29</th>
+												      <td>Conv2d-30</td>
+												      <td>[-1, 512, 14, 14]</td>
+												      <td>2,359,808</td>
+												    </tr>
+												    <tr>
+												      <th>30</th>
+												      <td>ReLU-31</td>
+												      <td>[-1, 512, 14, 14]</td>
+												      <td>0</td>
+												    </tr>
+												    <tr>
+												      <th>31</th>
+												      <td>Conv2d-32</td>
+												      <td>[-1, 512, 14, 14]</td>
+												      <td>2,359,808</td>
+												    </tr>
+												    <tr>
+												      <th>32</th>
+												      <td>ReLU-33</td>
+												      <td>[-1, 512, 14, 14]</td>
+												      <td>0</td>
+												    </tr>
+												    <tr>
+												      <th>33</th>
+												      <td>Conv2d-34</td>
+												      <td>[-1, 512, 14, 14]</td>
+												      <td>2,359,808</td>
+												    </tr>
+												    <tr>
+												      <th>34</th>
+												      <td>ReLU-35</td>
+												      <td>[-1, 512, 14, 14]</td>
+												      <td>0</td>
+												    </tr>
+												    <tr>
+												      <th>35</th>
+												      <td>Conv2d-36</td>
+												      <td>[-1, 512, 14, 14]</td>
+												      <td>2,359,808</td>
+												    </tr>
+												    <tr>
+												      <th>36</th>
+												      <td>ReLU-37</td>
+												      <td>[-1, 512, 14, 14]</td>
+												      <td>0</td>
+												    </tr>
+												    <tr>
+												      <th>37</th>
+												      <td>AvgPool2d-38</td>
+												      <td>[-1, 512, 7, 7]</td>
+												      <td>0</td>
+												    </tr>
+												  </tbody>
+												</table>
+											</div>
+
+											<div class="col-2 col-12-small">
+											</div>
+										</div>
+									</center> 
+								</p>
+
+
+								<h3>3. Model Hyperparameters & Deviations</h3>
+								<p>
+									We ended up with a fair enough of deviations from the paper to achieve results which were aesthetically pleasing for us. I'll try to document as much as I can so it's easier for people to reproduce results should they want to. So here's a list of notable changes & major parameters we used for our implementation.
+								</p>
+
+
+								<p>
+									<ul>
+										<li>
+											<b>Loss Functions:</b> The biggest change was that I weighted the loss function in the paper using the number of elements in the content layer activations. 
+											<br><br>
+
+
+											This was done for two key reasons -
+											<ul>
+												<li>
+													To make sure the content loss doesn't blow with the size of the activation volume (different layers w/ different volumes would yield very different content losses).
+												</li>
+												<li>
+													To bring the content & style losses closer together, without it the unweighted content loss completely overshadows the unweighted style loss.
+												</li>
+											</ul>
+
+											Additionally, our alpha:beta ratio range for our results were more extreme than the papers at 1e-5 to 1e-9.
+										</li>
+										<li>
+											<b>Loss Layers:</b> Used the same style layers as the paper but used conv1_1 or conv1_2 as the content loss layer for most of our results. This gave sharper content lines which we preferred over more blended results.
+										</li>
+										<li>
+											<b>Image Sizes:</b> Retained the aspect ratio of the content image, reshaped the style image accordingly. Interestingly, the size of the style image (wrt the content image) had a huge image on the aesthetics of the results. This essentially scaled how large & dense the textures from the style image are going to be. We used different ratios (style_im_size:content_im_size) for each case based on what looked the most appealing to us. General range: style image was 0.5x to 3x of content image, same aspect ratio. Would recommend starting with high resolution images & then resizing based on the GPU/time constraints instead of using low res images.
+										</li>
+										<li>
+											<b>Optimizer:</b> Used Adam with learning rate 0.035; 1e-2 worked too but converged slow for us.
+										</li>
+										<li>
+											<b>Normalization Layer:</b> This was quite important. Made the style appearance in results a lot more apparent. Need to normalize <i>all</i> images fed to the network so would 100% recommend making it a part of the model instead of a preprocessing pipeline.
+										</li>
+										<li>
+											<b>Pooling Layer:</b> Replaced all the Max Pools with Average Pools and the resulting images got a noticebly more vibrant (got punchy colors from the style image with this).
+										</li>
+										<li>
+											<b>Image Initialization:</b> There are a lot of different ways to go about image initialization. I tried starting off from content, style (resized to content), white, black, weighted average of content & style. Most of my results are starting off from content and my extremely high style loss basically performs style reconstruction starting at the content. Of course, starting at any of these biases the results in some way as they can end up at very different local minimas. I don't think this is a bad thing, we're creating art so this just gives us another knob to adjust! Not getting some artifacts from style that you want to get? Just start at 0.1 * style_im + 0.9 * content_im to push the optimizer in the <i>right</i> direction ;) 
+										</li>
+									</ul>
+								</p>
+								<hr>
+
+
+
+								<h2>Results!</h2>
+								<p>
+									Finally! Time to see some nice photos :))
+								</p>
+
+								<p>
+									<center>
+
+										<figcaption> Selfie </figcaption>
+										<div class='row'>
+											<div class="col-4 col-12-small">
+												<img src="images/simpsons.jpeg" class="image fit"/>
+											</div>
+
+											<div class="col-4 col-12-small">
+												<img src="images/selfie_simpsons.jpg" class="image fit"/>
+											</div>
+
+											<div class="col-4 col-12-small">
+												<img src="images/selfie.jpg" class="image fit"/>
+											</div>
+
+										</div> 
+										<br>
+
+
+										<figcaption> Go Bears! </figcaption>
+										<div class='row'>
+											<div class="col-1 col-12-small"> </div>
+
+											<div class="col-5 col-12-small">
+												<img src="images/faces.jpg" class="image fit"/>
+											</div>
+
+											<div class="col-5 col-12-small">
+												<img src="images/crowd.jpg" class="image fit"/>
+											</div>
+
+											<div class="col-1 col-12-small"> </div>
+
+										</div> 
+										<div class='row'>
+											<div class="col-1 col-12-small"> </div>
+
+											<div class="col-10 col-12-small">
+												<img src="images/crowd_faces_highres.jpg" class="image fit"/>
+											</div>
+
+											<div class="col-1 col-12-small"> </div>
+
+										</div>
+										<br>
+
+										<figcaption> The many styles of Neckarfront.. </figcaption>
+
+										<div class='row'>
+											<div class="col-1 col-12-small"> </div>
+											<div class="col-5 col-12-small">
+												<img src="images/starrynight.jpg" class="image fit"/>
+											</div>
+											<div class="col-5 col-12-small">
+												<img src="images/comp_vii.jpg" class="image fit"/>
+											</div>
+
+											<div class="col-1 col-12-small"> </div>
+										</div> 
+
+										<div class='row'>
+											<div class="col-1 col-12-small"> </div>
+
+											<div class="col-5 col-12-small">
+												<img src="images/noir.jpg" class="image fit"/>
+											</div>
+
+											<div class="col-5 col-12-small">
+												<img src="images/scream.jpg" class="image fit"/>
+											</div>
+
+											<div class="col-1 col-12-small"> </div>
+										</div> 
+										<div class='row'>
+											<div class="col-1 col-12-small"> </div>
+
+											<div class="col-10 col-12-small">
+												<img src="images/neckarfront2.jpg" class="image fit"/>
+											</div>
+
+											<div class="col-1 col-12-small"> </div>
+										</div>
+										<div class='row'>
+											<div class="col-1 col-12-small"> </div>
+											<div class="col-5 col-12-small">
+												<img src="images/neckarfront2_starrynight.jpg" class="image fit"/>
+											</div>
+											<div class="col-5 col-12-small">
+												<img src="images/neckarfront2_comp_vii.jpg" class="image fit"/>
+											</div>
+
+											<div class="col-1 col-12-small"> </div>
+										</div> 
+
+										<div class='row'>
+											<div class="col-1 col-12-small"> </div>
+
+											<div class="col-5 col-12-small">
+												<img src="images/neckarfront2_noir.jpg" class="image fit"/>
+											</div>
+
+											<div class="col-5 col-12-small">
+												<img src="images/neckarfront2_scream.jpg" class="image fit"/>
+											</div>
+
+											<div class="col-1 col-12-small"> </div>
+										</div> 
+
+
+
+										<figcaption> Molly! </figcaption>
+										<div class='row'>
+											<div class="col-4 col-12-small">
+												<img src="images/pattern.jpg" class="image fit"/>
+											</div>
+
+											<div class="col-4 col-12-small">
+												<img src="images/molly_pattern.jpg" class="image fit"/>
+											</div>
+
+											<div class="col-4 col-12-small">
+												<img src="images/molly.jpg" class="image fit"/>
+											</div>
+
+										</div> 
+										<br>
+
+									</center> 
+								</p>
+
+								<p>
+									My results for neckarfront are a bit different in style from the paper but that is because I prefer this aesthetic and tweaked my hyperparameters & setup towards this. Their starry night style transfer was >>> That's the one I wasn't able to figure out the parameters for, maybe one day I will. 
+								</p>
+								<hr>
+
+			</div>
+
+		<!-- Scripts -->
+			<script src="assets/js/jquery.min.js"></script>
+			<script src="assets/js/jquery.scrollex.min.js"></script>
+			<script src="assets/js/jquery.scrolly.min.js"></script>
+			<script src="assets/js/browser.min.js"></script>
+			<script src="assets/js/breakpoints.min.js"></script>
+			<script src="assets/js/util.js"></script>
+			<script src="assets/js/main.js"></script>
+
+	</body>
+</html>
